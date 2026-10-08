@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Trip Logger | RigLog</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+            padding: 24px 16px;
+        }
+        .navbar {
+            max-width: 900px;
+            margin: 0 auto 24px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+        }
+        .brand {
+            font-size: 18px;
+            font-weight: 800;
+            color: #38bdf8;
+            letter-spacing: 0.5px;
+        }
+        .user-tag {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+        .logout-link {
+            color: #f87171;
+            text-decoration: none;
+            margin-left: 12px;
+            font-size: 13px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        /* Top Quick Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .stat-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: #38bdf8;
+        }
+        /* Main Entry Card */
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+        .card-header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 12px;
+        }
+        .card-header h2 {
+            font-size: 20px;
+            color: #ffffff;
+            font-weight: 700;
+        }
+        .card-header p {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 18px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+        }
+        input, select, textarea {
+            padding: 12px 14px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+        }
+        .btn-submit {
+            grid-column: 1 / -1;
+            padding: 14px;
+            background: #2563eb;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+        .btn-submit:hover {
+            background: #1d4ed8;
+        }
+        /* Recent Entries Table */
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+        th {
+            background: #0f172a;
+            color: #94a3b8;
+            padding: 12px 14px;
+            border-bottom: 1px solid #334155;
+            font-weight: 600;
+        }
+        td {
+            padding: 14px;
+            border-bottom: 1px solid #334155;
+            color: #cbd5e1;
+        }
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .badge-status {
+            background: #064e3b;
+            color: #6ee7b7;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="brand">RigLog // Driver Dashboard</div>
+        <div class="user-tag">
+            Rig #{{ user.driverprofile.truck_number|default:"Unit 101" }} 
+            <a href="{% url 'logout' %}" class="logout-link">Sign Out</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Top Stats row -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Miles This Week</div>
+                <div class="stat-value">2,840 mi</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Avg Fuel Efficiency</div>
+                <div class="stat-value">6.8 mpg</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Active Settlements</div>
+                <div class="stat-value">$3,450.00</div>
+            </div>
+        </div>
+
+        <!-- Rapid Daily Log Form -->
+        <div class="card">
+            <div class="card-header">
+                <h2>New Daily Trip Entry</h2>
+                <p>Record daily odometer splits, origin, destination, and fuel receipts.</p>
+            </div>
+
+            <form method="POST" class="form-grid">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="date">Trip Date</label>
+                    <input type="date" id="date" name="date" value="2026-10-07">
+                </div>
+
+                <div class="form-group">
+                    <label for="load_num">Load / BOL #</label>
+                    <input type="text" id="load_num" name="load_num" placeholder="e.g. BOL-88492">
+                </div>
+
+                <div class="form-group">
+                    <label for="origin">Origin (City, ST)</label>
+                    <input type="text" id="origin" name="origin" placeholder="e.g. Atlanta, GA">
+                </div>
+
+                <div class="form-group">
+                    <label for="dest">Destination (City, ST)</label>
+                    <input type="text" id="dest" name="dest" placeholder="e.g. Dallas, TX">
+                </div>
+
+                <div class="form-group">
+                    <label for="start_odo">Start Odometer</label>
+                    <input type="number" id="start_odo" name="start_odo" placeholder="142850">
+                </div>
+
+                <div class="form-group">
+                    <label for="end_odo">End Odometer</label>
+                    <input type="number" id="end_odo" name="end_odo" placeholder="143620">
+                </div>
+
+                <div class="form-group">
+                    <label for="fuel_gal">Fuel Added (Gallons)</label>
+                    <input type="number" step="0.1" id="fuel_gal" name="fuel_gal" placeholder="115.4">
+                </div>
+
+                <div class="form-group">
+                    <label for="fuel_cost">Fuel Total Cost ($)</label>
+                    <input type="number" step="0.01" id="fuel_cost" name="fuel_cost" placeholder="412.50">
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="notes">Notes / Maintenance / Scale Tickets</label>
+                    <textarea id="notes" name="notes" rows="2" placeholder="CAT scale passed, clean inspection at I-20 weigh station..."></textarea>
+                </div>
+
+                <button type="button" class="btn-submit">Save Daily Log</button>
+            </form>
+        </div>
+
+        <!-- Recent Activity Table -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Recent Run History</h2>
+                <p>Saved trip summaries and fuel records</p>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Route</th>
+                            <th>BOL #</th>
+                            <th>Miles</th>
+                            <th>Fuel (Gal)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Oct 6, 2026</td>
+                            <td>Nashville, TN &rarr; Atlanta, GA</td>
+                            <td>BOL-9921</td>
+                            <td>248 mi</td>
+                            <td>45.0 gal</td>
+                            <td><span class="badge-status">Delivered</span></td>
+                        </tr>
+                        <tr>
+                            <td>Oct 5, 2026</td>
+                            <td>Louisville, KY &rarr; Nashville, TN</td>
+                            <td>BOL-9884</td>
+                            <td>174 mi</td>
+                            <td>--</td>
+                            <td><span class="badge-status">Delivered</span></td>
+                        </tr>
+                        <tr>
+                            <td>Oct 4, 2026</td>
+                            <td>Indianapolis, IN &rarr; Louisville, KY</td>
+                            <td>BOL-9810</td>
+                            <td>114 mi</td>
+                            <td>68.2 gal</td>
+                            <td><span class="badge-status">Delivered</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

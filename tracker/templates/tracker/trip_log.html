@@ -14,7 +14,7 @@
             padding: 24px 16px;
         }
         .navbar {
-            max-width: 900px;
+            max-width: 1200px;
             margin: 0 auto 24px auto;
             display: flex;
             justify-content: space-between;
@@ -41,63 +41,48 @@
             font-size: 13px;
         }
         .container {
-            max-width: 900px;
+            max-width: 1200px;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
             gap: 24px;
         }
-        /* Top Quick Stats */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-        }
-        .stat-card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 10px;
-            padding: 20px;
-        }
-        .stat-label {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #94a3b8;
-            margin-bottom: 6px;
-        }
-        .stat-value {
-            font-size: 24px;
-            font-weight: 800;
-            color: #38bdf8;
-        }
-        /* Main Entry Card */
         .card {
             background: #1e293b;
             border: 1px solid #334155;
             border-radius: 12px;
-            padding: 28px;
+            padding: 24px;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
         }
         .card-header {
             margin-bottom: 20px;
             border-bottom: 1px solid #334155;
             padding-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
         }
         .card-header h2 {
             font-size: 20px;
             color: #ffffff;
             font-weight: 700;
         }
-        .card-header p {
-            color: #94a3b8;
+        .section-title {
+            grid-column: 1 / -1;
             font-size: 14px;
-            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #38bdf8;
+            padding: 8px 0 4px 0;
+            border-bottom: 1px solid #334155;
+            margin-top: 10px;
         }
         .form-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 18px;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 16px;
         }
         .form-group {
             display: flex;
@@ -107,39 +92,103 @@
             grid-column: 1 / -1;
         }
         label {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             color: #cbd5e1;
             margin-bottom: 6px;
         }
         input, select, textarea {
-            padding: 12px 14px;
+            padding: 10px 12px;
             background: #0f172a;
             border: 1px solid #334155;
             border-radius: 8px;
             color: #ffffff;
             font-size: 14px;
         }
+        input[readonly] {
+            background: #162032;
+            color: #38bdf8;
+            font-weight: 700;
+            cursor: not-allowed;
+        }
         input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: #38bdf8;
             box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
         }
-        .btn-submit {
+        /* Fuel stops container */
+        .fuel-stops-wrap {
             grid-column: 1 / -1;
+            background: #151f30;
+            border: 1px dashed #334155;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .fuel-row {
+            display: grid;
+            grid-template-columns: 2fr 1.5fr 1.5fr auto;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        .btn-add-fuel {
+            align-self: flex-start;
+            padding: 8px 14px;
+            background: #0369a1;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .btn-remove-fuel {
+            background: #ef4444;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 12px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        .btn-row {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 14px;
+            margin-top: 12px;
+        }
+        .btn-save {
+            flex: 1;
             padding: 14px;
             background: #2563eb;
             color: #ffffff;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 700;
             cursor: pointer;
-            margin-top: 10px;
-            transition: background 0.2s;
         }
-        .btn-submit:hover {
-            background: #1d4ed8;
+        .btn-complete {
+            flex: 1;
+            padding: 14px;
+            background: #059669;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .search-box {
+            padding: 8px 12px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 13px;
+            width: 260px;
         }
         /* Recent Entries Table */
         .table-responsive {
@@ -150,29 +199,27 @@
             width: 100%;
             border-collapse: collapse;
             text-align: left;
-            font-size: 14px;
+            font-size: 13px;
+            white-space: nowrap;
         }
         th {
             background: #0f172a;
             color: #94a3b8;
-            padding: 12px 14px;
+            padding: 10px 12px;
             border-bottom: 1px solid #334155;
             font-weight: 600;
         }
         td {
-            padding: 14px;
+            padding: 10px 12px;
             border-bottom: 1px solid #334155;
             color: #cbd5e1;
         }
         tr:hover td {
             background: rgba(255, 255, 255, 0.02);
         }
-        .badge-status {
-            background: #064e3b;
-            color: #6ee7b7;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
+        .action-link {
+            color: #38bdf8;
+            text-decoration: none;
             font-weight: 600;
         }
     </style>
@@ -182,134 +229,336 @@
     <div class="navbar">
         <div class="brand">RigLog // Driver Dashboard</div>
         <div class="user-tag">
-            Rig #{{ user.driverprofile.truck_number|default:"Unit 101" }} 
+            Rig #{{ user.profile.truck_number|default:"Unit 101" }} 
             <a href="{% url 'logout' %}" class="logout-link">Sign Out</a>
         </div>
     </div>
 
     <div class="container">
-        <!-- Top Stats row -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Miles This Week</div>
-                <div class="stat-value">2,840 mi</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Avg Fuel Efficiency</div>
-                <div class="stat-value">6.8 mpg</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Active Settlements</div>
-                <div class="stat-value">$3,450.00</div>
-            </div>
-        </div>
-
-        <!-- Rapid Daily Log Form -->
+        <!-- Main Entry Card -->
         <div class="card">
             <div class="card-header">
-                <h2>New Daily Trip Entry</h2>
-                <p>Record daily odometer splits, origin, destination, and fuel receipts.</p>
+                <h2>Log Trip & Expenses</h2>
             </div>
 
-            <form method="POST" class="form-grid">
+            <form method="POST" id="tripForm" class="form-grid">
                 {% csrf_token %}
+                <input type="hidden" name="status" id="tripStatus" value="In Transit">
+
+                <!-- Primary Identifiers & Pay -->
                 <div class="form-group">
-                    <label for="date">Trip Date</label>
-                    <input type="date" id="date" name="date" value="2026-10-07">
+                    <label for="trip_number">Trip Number</label>
+                    <input type="text" id="trip_number" name="trip_number" placeholder="e.g. TR-1049">
                 </div>
 
                 <div class="form-group">
-                    <label for="load_num">Load / BOL #</label>
-                    <input type="text" id="load_num" name="load_num" placeholder="e.g. BOL-88492">
+                    <label for="bol_number">BOL #</label>
+                    <input type="text" id="bol_number" name="bol_number" placeholder="e.g. BOL-99482">
                 </div>
 
                 <div class="form-group">
-                    <label for="origin">Origin (City, ST)</label>
-                    <input type="text" id="origin" name="origin" placeholder="e.g. Atlanta, GA">
+                    <label for="payout">Pay ($)</label>
+                    <input type="number" step="0.01" id="payout" name="payout" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group">
-                    <label for="dest">Destination (City, ST)</label>
-                    <input type="text" id="dest" name="dest" placeholder="e.g. Dallas, TX">
+                    <label for="fuel_surcharge">Fuel Surcharge ($)</label>
+                    <input type="number" step="0.01" id="fuel_surcharge" name="fuel_surcharge" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group">
-                    <label for="start_odo">Start Odometer</label>
-                    <input type="number" id="start_odo" name="start_odo" placeholder="142850">
+                    <label for="miles_total">Miles Total</label>
+                    <input type="number" step="0.1" id="miles_total" name="miles_total" placeholder="0.0" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group">
-                    <label for="end_odo">End Odometer</label>
-                    <input type="number" id="end_odo" name="end_odo" placeholder="143620">
+                    <label for="ppm">PPM (Pay / Miles)</label>
+                    <input type="text" id="ppm" readonly placeholder="$0.00">
+                </div>
+
+                <!-- Origin Section -->
+                <div class="section-title">Origin & Pickup</div>
+
+                <div class="form-group">
+                    <label for="origin_city">Origin City</label>
+                    <input type="text" id="origin_city" name="origin_city" placeholder="City, ST">
                 </div>
 
                 <div class="form-group">
-                    <label for="fuel_gal">Fuel Added (Gallons)</label>
-                    <input type="number" step="0.1" id="fuel_gal" name="fuel_gal" placeholder="115.4">
+                    <label for="pickup_date">Pickup Date</label>
+                    <input type="date" id="pickup_date" name="pickup_date">
                 </div>
 
                 <div class="form-group">
-                    <label for="fuel_cost">Fuel Total Cost ($)</label>
-                    <input type="number" step="0.01" id="fuel_cost" name="fuel_cost" placeholder="412.50">
+                    <label for="pickup_arrival">Arrival Time</label>
+                    <input type="time" id="pickup_arrival" name="pickup_arrival">
+                </div>
+
+                <div class="form-group">
+                    <label for="pickup_departure">Departure Time</label>
+                    <input type="time" id="pickup_departure" name="pickup_departure">
+                </div>
+
+                <!-- Multiple Fuel Stops -->
+                <div class="section-title">Fuel Stops</div>
+                <div class="fuel-stops-wrap" id="fuelStopsContainer">
+                    <div class="fuel-row">
+                        <div class="form-group">
+                            <label>Location / Stop</label>
+                            <input type="text" name="fuel_stop_location[]" placeholder="e.g. Loves #412">
+                        </div>
+                        <div class="form-group">
+                            <label>Fuel Gal</label>
+                            <input type="number" step="0.01" name="fuel_gal[]" class="fuel-gal-input" placeholder="0.00" oninput="calculateLiveTotals()">
+                        </div>
+                        <div class="form-group">
+                            <label>Price / Gallon</label>
+                            <input type="number" step="0.001" name="fuel_ppg[]" class="fuel-ppg-input" placeholder="0.000" oninput="calculateLiveTotals()">
+                        </div>
+                        <button type="button" class="btn-remove-fuel" onclick="removeFuelStop(this)">&times;</button>
+                    </div>
+                    <button type="button" class="btn-add-fuel" onclick="addFuelStop()">+ Add Fuel Stop</button>
+                </div>
+
+                <!-- Surcharge Deductions & Incidentals -->
+                <div class="section-title">Expenses & Running Total</div>
+
+                <div class="form-group">
+                    <label for="def_cost">DEF ($)</label>
+                    <input type="number" step="0.01" id="def_cost" name="def_cost" placeholder="0.00" oninput="calculateLiveTotals()">
+                </div>
+
+                <div class="form-group">
+                    <label for="reefer_cost">Reefer ($)</label>
+                    <input type="number" step="0.01" id="reefer_cost" name="reefer_cost" value="0.00" oninput="calculateLiveTotals()">
+                </div>
+
+                <div class="form-group">
+                    <label for="cat_scale">CAT Scale ($)</label>
+                    <input type="number" step="0.01" id="cat_scale" name="cat_scale" placeholder="0.00" oninput="calculateLiveTotals()">
+                </div>
+
+                <div class="form-group">
+                    <label for="incidentals">Incidentals (Wash, Rad, etc)</label>
+                    <input type="number" step="0.01" id="incidentals" name="incidentals" placeholder="0.00">
+                </div>
+
+                <div class="form-group">
+                    <label for="running_total">Running Total</label>
+                    <input type="text" id="running_total" readonly placeholder="$0.00">
+                </div>
+
+                <!-- Destination Section -->
+                <div class="section-title">Destination & Delivery</div>
+
+                <div class="form-group">
+                    <label for="destination_city">Destination City</label>
+                    <input type="text" id="destination_city" name="destination_city" placeholder="City, ST">
+                </div>
+
+                <div class="form-group">
+                    <label for="destination_date">Delivery Date</label>
+                    <input type="date" id="destination_date" name="destination_date">
+                </div>
+
+                <div class="form-group">
+                    <label for="destination_arrival">Arrival Time</label>
+                    <input type="time" id="destination_arrival" name="destination_arrival">
+                </div>
+
+                <div class="form-group">
+                    <label for="destination_departure">Departure Time</label>
+                    <input type="time" id="destination_departure" name="destination_departure">
+                </div>
+
+                <!-- Customer & Notes -->
+                <div class="section-title">Customer & Notes</div>
+
+                <div class="form-group">
+                    <label for="customer_name">Customer Name</label>
+                    <input type="text" id="customer_name" name="customer_name" placeholder="Searchable customer name">
                 </div>
 
                 <div class="form-group full-width">
-                    <label for="notes">Notes / Maintenance / Scale Tickets</label>
-                    <textarea id="notes" name="notes" rows="2" placeholder="CAT scale passed, clean inspection at I-20 weigh station..."></textarea>
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" name="notes" rows="2" placeholder="Scale weights, delivery dock info, inspection notes..."></textarea>
                 </div>
 
-                <button type="button" class="btn-submit">Save Daily Log</button>
+                <!-- Actions -->
+                <div class="btn-row">
+                    <button type="submit" class="btn-save" onclick="setTripStatus('In Transit')">Save Daily Log</button>
+                    <button type="submit" class="btn-complete" onclick="setTripStatus('Delivered')">Complete Trip</button>
+                </div>
             </form>
         </div>
 
         <!-- Recent Activity Table -->
         <div class="card">
             <div class="card-header">
-                <h2>Recent Run History</h2>
-                <p>Saved trip summaries and fuel records</p>
+                <div>
+                    <h2>Recent Run History</h2>
+                    <p style="color: #94a3b8; font-size: 13px;">Filtered by Customer Name or Notes</p>
+                </div>
+                <input type="text" id="tableFilter" class="search-box" placeholder="Search Customer or Notes..." onkeyup="filterRunHistory()">
             </div>
             <div class="table-responsive">
-                <table>
+                <table id="historyTable">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>Route</th>
+                            <th>Trip #</th>
                             <th>BOL #</th>
-                            <th>Miles</th>
-                            <th>Fuel (Gal)</th>
-                            <th>Status</th>
+                            <th>Pickup Date</th>
+                            <th>Pay</th>
+                            <th>Fuel Surcharge</th>
+                            <th>Miles Total</th>
+                            <th>PPM</th>
+                            <th>Origin City</th>
+                            <th>Arr Time</th>
+                            <th>Dep Time</th>
+                            <th>Fuel Total</th>
+                            <th>DEF</th>
+                            <th>Reefer</th>
+                            <th>CAT Scale</th>
+                            <th>Running Total</th>
+                            <th>Incidentals</th>
+                            <th>Dest City</th>
+                            <th>Delivery Date</th>
+                            <th>Arr Time</th>
+                            <th>Dep Time</th>
+                            <th>Customer Name</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
+                        {% for trip in trips %}
                         <tr>
-                            <td>Oct 6, 2026</td>
-                            <td>Nashville, TN &rarr; Atlanta, GA</td>
-                            <td>BOL-9921</td>
-                            <td>248 mi</td>
-                            <td>45.0 gal</td>
-                            <td><span class="badge-status">Delivered</span></td>
+                            <td><strong>{{ trip.trip_number|default:"--" }}</strong></td>
+                            <td>{{ trip.bol_number|default:"--" }}</td>
+                            <td>{{ trip.pickup_date|date:"m/d/Y"|default:"--" }}</td>
+                            <td>${{ trip.payout|floatformat:2 }}</td>
+                            <td>${{ trip.fuel_surcharge|floatformat:2 }}</td>
+                            <td>{{ trip.miles_total }} mi</td>
+                            <td>${{ trip.ppm|floatformat:2 }}</td>
+                            <td>{{ trip.origin_city }}</td>
+                            <td>{{ trip.pickup_arrival|time:"H:i"|default:"--" }}</td>
+                            <td>{{ trip.pickup_departure|time:"H:i"|default:"--" }}</td>
+                            <td>${{ trip.total_fuel_cost|floatformat:2 }}</td>
+                            <td>${{ trip.def_cost|floatformat:2 }}</td>
+                            <td>${{ trip.reefer_cost|floatformat:2 }}</td>
+                            <td>${{ trip.cat_scale|floatformat:2 }}</td>
+                            <td style="color: {% if trip.running_total >= 0 %}#34d399{% else %}#f87171{% endif %}; font-weight: 700;">
+                                ${{ trip.running_total|floatformat:2 }}
+                            </td>
+                            <td>${{ trip.incidentals|floatformat:2 }}</td>
+                            <td>{{ trip.destination_city }}</td>
+                            <td>{{ trip.destination_date|date:"m/d/Y"|default:"--" }}</td>
+                            <td>{{ trip.destination_arrival|time:"H:i"|default:"--" }}</td>
+                            <td>{{ trip.destination_departure|time:"H:i"|default:"--" }}</td>
+                            <td class="col-customer"><strong>{{ trip.customer_name|default:"--" }}</strong></td>
+                            <td class="col-notes">{{ trip.notes|default:"--" }}</td>
+                            <td><a href="{% url 'edit_trip' trip.id %}" class="action-link">Edit</a></td>
                         </tr>
+                        {% empty %}
                         <tr>
-                            <td>Oct 5, 2026</td>
-                            <td>Louisville, KY &rarr; Nashville, TN</td>
-                            <td>BOL-9884</td>
-                            <td>174 mi</td>
-                            <td>--</td>
-                            <td><span class="badge-status">Delivered</span></td>
+                            <td colspan="23" style="text-align: center; color: #64748b; padding: 24px;">No trips recorded yet.</td>
                         </tr>
-                        <tr>
-                            <td>Oct 4, 2026</td>
-                            <td>Indianapolis, IN &rarr; Louisville, KY</td>
-                            <td>BOL-9810</td>
-                            <td>114 mi</td>
-                            <td>68.2 gal</td>
-                            <td><span class="badge-status">Delivered</span></td>
-                        </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
+    <script>
+        function setTripStatus(status) {
+            document.getElementById('tripStatus').value = status;
+        }
+
+        // Add dynamic fuel stop row
+        function addFuelStop() {
+            const container = document.getElementById('fuelStopsContainer');
+            const row = document.createElement('div');
+            row.className = 'fuel-row';
+            row.innerHTML = `
+                <div class="form-group">
+                    <input type="text" name="fuel_stop_location[]" placeholder="e.g. Pilot #102">
+                </div>
+                <div class="form-group">
+                    <input type="number" step="0.01" name="fuel_gal[]" class="fuel-gal-input" placeholder="0.00" oninput="calculateLiveTotals()">
+                </div>
+                <div class="form-group">
+                    <input type="number" step="0.001" name="fuel_ppg[]" class="fuel-ppg-input" placeholder="0.000" oninput="calculateLiveTotals()">
+                </div>
+                <button type="button" class="btn-remove-fuel" onclick="removeFuelStop(this)">&times;</button>
+            `;
+            container.insertBefore(row, container.lastElementChild);
+        }
+
+        function removeFuelStop(button) {
+            const rows = document.querySelectorAll('.fuel-row');
+            if (rows.length > 1) {
+                button.parentElement.remove();
+                calculateLiveTotals();
+            } else {
+                button.parentElement.querySelectorAll('input').forEach(input => input.value = '');
+                calculateLiveTotals();
+            }
+        }
+
+        // Live calculation of PPM and Running Total
+        function calculateLiveTotals() {
+            const pay = parseFloat(document.getElementById('payout').value) || 0;
+            const miles = parseFloat(document.getElementById('miles_total').value) || 0;
+            const surcharge = parseFloat(document.getElementById('fuel_surcharge').value) || 0;
+            const defCost = parseFloat(document.getElementById('def_cost').value) || 0;
+            const reefer = parseFloat(document.getElementById('reefer_cost').value) || 0;
+            const catScale = parseFloat(document.getElementById('cat_scale').value) || 0;
+
+            // Compute PPM
+            const ppmField = document.getElementById('ppm');
+            if (miles > 0 && pay > 0) {
+                ppmField.value = '$' + (pay / miles).toFixed(2);
+            } else {
+                ppmField.value = '$0.00';
+            }
+
+            // Compute Total Fuel Cost across all stops
+            let fuelTotal = 0;
+            const galInputs = document.querySelectorAll('.fuel-gal-input');
+            const ppgInputs = document.querySelectorAll('.fuel-ppg-input');
+
+            for (let i = 0; i < galInputs.length; i++) {
+                const gal = parseFloat(galInputs[i].value) || 0;
+                const ppg = parseFloat(ppgInputs[i].value) || 0;
+                fuelTotal += (gal * ppg);
+            }
+
+            // Zach's Formula: Fuel Surcharge - LT (Fuel Total) - DEF - Reefer - CAT Scale
+            const runningTotal = surcharge - fuelTotal - defCost - reefer - catScale;
+            document.getElementById('running_total').value = (runningTotal < 0 ? '-$' : '$') + Math.abs(runningTotal).toFixed(2);
+        }
+
+        // Search customer name and notes in history table
+        function filterRunHistory() {
+            const query = document.getElementById('tableFilter').value.toLowerCase();
+            const rows = document.querySelectorAll('#historyTable tbody tr');
+
+            rows.forEach(row => {
+                const customerEl = row.querySelector('.col-customer');
+                const notesEl = row.querySelector('.col-notes');
+                if (!customerEl || !notesEl) return;
+
+                const customer = customerEl.textContent.toLowerCase();
+                const notes = notesEl.textContent.toLowerCase();
+
+                if (customer.includes(query) || notes.includes(query)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+    </script>
 </body>
 </html>

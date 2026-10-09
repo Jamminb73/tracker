@@ -1,0 +1,22 @@
+recent run history first catagory needs to be trip #
+
+first column should say trip number pickup date origin city arrival time departure time fuel surcharge fuel added (gallons)
+ price per gallon (fuel price) def cost(comes out of fuel surcharger) def refer should default to 0 but allow user to add 
+ input if applicable add suel stop button if we need to put extra fuel stops into the trip.
+
+ cat scale $ value input, incidentals (washer fluid, radiator etc) 
+
+ destination city, arrival time, departure time time/date clicky or manipulator of some kind.
+
+ delivery date and we like the calender clicky button on date fields
+
+ Customer name / notes.
+
+ Save daily log changes to save data and add a complete trip button.
+ 
+ when complete trip button clicked add to recent run history but have a link to edit anything that might need.
+ but clear fields and give a fresh look?
+
+
+can get rid of start odometer end odometer
+Load /BOL # change to just BOL #

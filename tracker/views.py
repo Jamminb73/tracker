@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.http import JsonResponse
 from django.utils import timezone
 from .models import DriverProfile, Trip, FuelStop
@@ -56,15 +56,23 @@ def login_view(request):
 
     error = None
     if request.method == 'POST':
-        email = request.POST.get('email', '').strip()
+        login_input = request.POST.get('email', '').strip()
         password = request.POST.get('password', '')
 
-        user = authenticate(request, username=email, password=password)
+        # Look up user by either username OR email (case-insensitive)
+        matched_user = User.objects.filter(
+            Q(username__iexact=login_input) | Q(email__iexact=login_input)
+        ).first()
+
+        # If found, authenticate with their actual username; otherwise fall back to raw input
+        auth_username = matched_user.username if matched_user else login_input
+        user = authenticate(request, username=auth_username, password=password)
+
         if user is not None:
             login(request, user)
             return redirect('trip_log')
         else:
-            error = 'Invalid email or password.'
+            error = 'Invalid email/username or password.'
 
     return render(request, 'tracker/login.html', {'error': error})
 

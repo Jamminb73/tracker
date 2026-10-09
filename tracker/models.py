@@ -1,16 +1,39 @@
 from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 
 class DriverProfile(models.Model):
+    TIER_CHOICES = [
+        ('BETA_LIFETIME', 'Beta VIP (Lifetime Free)'),
+        ('ACTIVE_PAID', 'Active Paid Subscriber'),
+        ('TRIAL', 'Free Trial'),
+        ('EXPIRED', 'Subscription Expired'),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     phone = models.CharField(max_length=20, blank=True)
     llc_name = models.CharField(max_length=150, blank=True)
     truck_number = models.CharField(max_length=50)
 
+    # Subscription / Access Management
+    tier = models.CharField(max_length=30, choices=TIER_CHOICES, default='BETA_LIFETIME')
+    subscription_end_date = models.DateField(null=True, blank=True)
+
+    @property
+    def has_access(self):
+        """Single source of truth for paywall gating."""
+        if self.user.is_superuser or self.user.is_staff:
+            return True
+        if self.tier in ['BETA_LIFETIME', 'ACTIVE_PAID']:
+            return True
+        if self.tier == 'TRIAL' and self.subscription_end_date:
+            return timezone.now().date() <= self.subscription_end_date
+        return False
+
     def __str__(self):
-        return f"{self.user.get_full_name() or self.user.username} - Rig #{self.truck_number}"
+        return f"{self.user.get_full_name() or self.user.username} - Rig #{self.truck_number} ({self.get_tier_display()})"
 
 
 class Trip(models.Model):

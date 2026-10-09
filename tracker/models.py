@@ -15,6 +15,8 @@ class DriverProfile(models.Model):
 
 class Trip(models.Model):
     STATUS_CHOICES = [
+        ('Quote / Planner', 'Quote / Mission Planner'),
+        ('Booked', 'Booked / Scheduled'),
         ('Dispatched', 'Dispatched'),
         ('In Transit', 'In Transit'),
         ('Delivered', 'Delivered'),
@@ -22,13 +24,16 @@ class Trip(models.Model):
     ]
 
     driver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trips')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Delivered')
+
     trip_number = models.CharField(max_length=50, blank=True)
     bol_number = models.CharField(max_length=64, blank=True, verbose_name="BOL #")
 
     # Financials & Mileage
     payout = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Pay")
     fuel_surcharge = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
-    miles_total = models.DecimalField(max_digits=8, decimal_places=1, default=Decimal('0.0'))
+    miles_total = models.DecimalField(max_digits=8, decimal_places=1, default=Decimal('0.0'), verbose_name="Loaded Miles")
+    deadhead_miles = models.DecimalField(max_digits=8, decimal_places=1, default=Decimal('0.0'), verbose_name="Deadhead Miles")
 
     # Origin & Pickup
     origin_city = models.CharField(max_length=100)
@@ -55,16 +60,26 @@ class Trip(models.Model):
     # Customer & Notes
     customer_name = models.CharField(max_length=150, blank=True, db_index=True)
     notes = models.TextField(blank=True)
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Delivered')
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-pickup_date', '-created_at']
 
+    # --- Core Mileage & Revenue Calculations ---
+    @property
+    def all_miles(self):
+        """Total odometer miles required (Loaded + Deadhead)."""
+        return (self.miles_total or Decimal('0.0')) + (self.deadhead_miles or Decimal('0.0'))
+
+    @property
+    def gross_revenue(self):
+        """Total pay plus fuel surcharge."""
+        return (self.payout or Decimal('0.00')) + (self.fuel_surcharge or Decimal('0.00'))
+
     @property
     def ppm(self):
-        """Pay Per Mile: pay / miles (non-editable reporting field)"""
+        """Gross Pay Per Loaded Mile (what brokers talk about)."""
         if self.miles_total and self.miles_total > 0:
             return round(self.payout / self.miles_total, 2)
         return Decimal('0.00')
@@ -93,13 +108,41 @@ class Trip(models.Model):
             - (self.cat_scale or Decimal('0.00'))
         )
 
+    # --- Mission Planner / Risk vs. Reward Metrics ---
+    @property
+    def total_expenses(self):
+        """All out-of-pocket costs on this load."""
+        return (
+            self.total_fuel_cost
+            + (self.def_cost or Decimal('0.00'))
+            + (self.reefer_cost or Decimal('0.00'))
+            + (self.cat_scale or Decimal('0.00'))
+            + (self.incidentals or Decimal('0.00'))
+        )
+
+    @property
+    def net_profit(self):
+        """True money left after diesel and road expenses."""
+        return self.gross_revenue - self.total_expenses
+
+    @property
+    def net_ppm(self):
+        """
+        True take-home per mile driven (including deadhead).
+        Tells the driver if a high-paying load is actually eating them alive on empty miles.
+        """
+        total_distance = self.all_miles
+        if total_distance and total_distance > 0:
+            return round(self.net_profit / total_distance, 2)
+        return Decimal('0.00')
+
     def __str__(self):
         label = self.bol_number or self.trip_number or 'Trip'
         return f"{label} ({self.origin_city} -> {self.destination_city})"
 
 
 class FuelStop(models.Model):
-    """Sub-table to support 'multiple fuel lines per trip' with the Add Fuel Stop button."""
+    """Sub-table to support multiple fuel lines per trip."""
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='fuel_stops')
     stop_location = models.CharField(max_length=100, blank=True)
     gallons = models.DecimalField(max_digits=7, decimal_places=2, default=Decimal('0.00'))

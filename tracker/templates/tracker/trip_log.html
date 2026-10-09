@@ -14,7 +14,7 @@
             padding: 24px 16px;
         }
         .navbar {
-            max-width: 1200px;
+            max-width: 1280px;
             margin: 0 auto 24px auto;
             display: flex;
             justify-content: space-between;
@@ -41,7 +41,7 @@
             font-size: 13px;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1280px;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
@@ -81,7 +81,7 @@
         }
         .form-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 16px;
         }
         .form-group {
@@ -116,7 +116,6 @@
             border-color: #38bdf8;
             box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
         }
-        /* Fuel stops container */
         .fuel-stops-wrap {
             grid-column: 1 / -1;
             background: #151f30;
@@ -158,9 +157,11 @@
             display: flex;
             gap: 14px;
             margin-top: 12px;
+            flex-wrap: wrap;
         }
         .btn-save {
             flex: 1;
+            min-width: 180px;
             padding: 14px;
             background: #2563eb;
             color: #ffffff;
@@ -170,8 +171,21 @@
             font-weight: 700;
             cursor: pointer;
         }
+        .btn-plan {
+            flex: 1;
+            min-width: 180px;
+            padding: 14px;
+            background: #d97706;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
         .btn-complete {
             flex: 1;
+            min-width: 180px;
             padding: 14px;
             background: #059669;
             color: #ffffff;
@@ -190,7 +204,31 @@
             font-size: 13px;
             width: 260px;
         }
-        /* Recent Entries Table */
+        /* Customer Red Flag Alert Box */
+        #customer-warning-banner {
+            display: none;
+            margin-top: 8px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        /* Status Badges */
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .badge-quote { background: #78350f; color: #fde68a; }
+        .badge-active { background: #1e3a8a; color: #93c5fd; }
+        .badge-delivered { background: #064e3b; color: #6ee7b7; }
+
         .table-responsive {
             overflow-x: auto;
             margin-top: 12px;
@@ -267,13 +305,23 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="miles_total">Miles Total</label>
+                    <label for="miles_total">Loaded Miles</label>
                     <input type="number" step="0.1" id="miles_total" name="miles_total" placeholder="0.0" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group">
-                    <label for="ppm">PPM (Pay / Miles)</label>
+                    <label for="deadhead_miles">Deadhead Miles</label>
+                    <input type="number" step="0.1" id="deadhead_miles" name="deadhead_miles" placeholder="0.0" oninput="calculateLiveTotals()">
+                </div>
+
+                <div class="form-group">
+                    <label for="ppm">Gross PPM (Loaded)</label>
                     <input type="text" id="ppm" readonly placeholder="$0.00">
+                </div>
+
+                <div class="form-group">
+                    <label for="net_ppm">True Net PPM (All Miles)</label>
+                    <input type="text" id="net_ppm" readonly placeholder="$0.00">
                 </div>
 
                 <!-- Origin Section -->
@@ -305,15 +353,15 @@
                     <div class="fuel-row">
                         <div class="form-group">
                             <label>Location / Stop</label>
-                            <input type="text" name="fuel_stop_location[]" placeholder="e.g. Loves #412">
+                            <input type="text" name="stop_location[]" placeholder="e.g. Loves #412">
                         </div>
                         <div class="form-group">
                             <label>Fuel Gal</label>
-                            <input type="number" step="0.01" name="fuel_gal[]" class="fuel-gal-input" placeholder="0.00" oninput="calculateLiveTotals()">
+                            <input type="number" step="0.01" name="fuel_gallons[]" class="fuel-gal-input" placeholder="0.00" oninput="calculateLiveTotals()">
                         </div>
                         <div class="form-group">
                             <label>Price / Gallon</label>
-                            <input type="number" step="0.001" name="fuel_ppg[]" class="fuel-ppg-input" placeholder="0.000" oninput="calculateLiveTotals()">
+                            <input type="number" step="0.001" name="fuel_price[]" class="fuel-ppg-input" placeholder="0.000" oninput="calculateLiveTotals()">
                         </div>
                         <button type="button" class="btn-remove-fuel" onclick="removeFuelStop(this)">&times;</button>
                     </div>
@@ -340,11 +388,11 @@
 
                 <div class="form-group">
                     <label for="incidentals">Incidentals (Wash, Rad, etc)</label>
-                    <input type="number" step="0.01" id="incidentals" name="incidentals" placeholder="0.00">
+                    <input type="number" step="0.01" id="incidentals" name="incidentals" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group">
-                    <label for="running_total">Running Total</label>
+                    <label for="running_total">Running Total (Surcharge - Costs)</label>
                     <input type="text" id="running_total" readonly placeholder="$0.00">
                 </div>
 
@@ -374,9 +422,15 @@
                 <!-- Customer & Notes -->
                 <div class="section-title">Customer & Notes</div>
 
-                <div class="form-group">
+                <div class="form-group full-width">
                     <label for="customer_name">Customer Name</label>
-                    <input type="text" id="customer_name" name="customer_name" placeholder="Searchable customer name">
+                    <input type="text" id="customer_name" name="customer_name" placeholder="Searchable customer name" autocomplete="off">
+                    
+                    <!-- Dynamic Red Flag / Customer Notice -->
+                    <div id="customer-warning-banner">
+                        <strong style="color: #f87171;">⚠️ Past Customer Note:</strong>
+                        <div id="customer-warning-text" style="margin-top: 4px;"></div>
+                    </div>
                 </div>
 
                 <div class="form-group full-width">
@@ -386,8 +440,9 @@
 
                 <!-- Actions -->
                 <div class="btn-row">
-                    <button type="submit" class="btn-save" onclick="setTripStatus('In Transit')">Save Daily Log</button>
-                    <button type="submit" class="btn-complete" onclick="setTripStatus('Delivered')">Complete Trip</button>
+                    <button type="submit" name="save_log" class="btn-save" onclick="setTripStatus('In Transit')">Save Daily Log</button>
+                    <button type="submit" name="plan_mission" class="btn-plan" onclick="setTripStatus('Quote / Planner')">Save as Quote / Mission</button>
+                    <button type="submit" name="complete_trip" class="btn-complete" onclick="setTripStatus('Delivered')">Complete Trip</button>
                 </div>
             </form>
         </div>
@@ -396,7 +451,7 @@
         <div class="card">
             <div class="card-header">
                 <div>
-                    <h2>Recent Run History</h2>
+                    <h2>Recent Run History & Bids</h2>
                     <p style="color: #94a3b8; font-size: 13px;">Filtered by Customer Name or Notes</p>
                 </div>
                 <input type="text" id="tableFilter" class="search-box" placeholder="Search Customer or Notes..." onkeyup="filterRunHistory()">
@@ -405,12 +460,14 @@
                 <table id="historyTable">
                     <thead>
                         <tr>
+                            <th>Status</th>
                             <th>Trip #</th>
                             <th>BOL #</th>
                             <th>Pickup Date</th>
                             <th>Pay</th>
                             <th>Fuel Surcharge</th>
-                            <th>Miles Total</th>
+                            <th>Loaded Mi</th>
+                            <th>Deadhead</th>
                             <th>PPM</th>
                             <th>Origin City</th>
                             <th>Arr Time</th>
@@ -427,18 +484,27 @@
                             <th>Dep Time</th>
                             <th>Customer Name</th>
                             <th>Notes</th>
-                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for trip in trips %}
                         <tr>
+                            <td>
+                                {% if trip.status == 'Quote / Planner' %}
+                                    <span class="status-badge badge-quote">Quote</span>
+                                {% elif trip.status == 'In Transit' %}
+                                    <span class="status-badge badge-active">In Transit</span>
+                                {% else %}
+                                    <span class="status-badge badge-delivered">Delivered</span>
+                                {% endif %}
+                            </td>
                             <td><strong>{{ trip.trip_number|default:"--" }}</strong></td>
                             <td>{{ trip.bol_number|default:"--" }}</td>
                             <td>{{ trip.pickup_date|date:"m/d/Y"|default:"--" }}</td>
                             <td>${{ trip.payout|floatformat:2 }}</td>
                             <td>${{ trip.fuel_surcharge|floatformat:2 }}</td>
                             <td>{{ trip.miles_total }} mi</td>
+                            <td>{{ trip.deadhead_miles|default:"0.0" }} mi</td>
                             <td>${{ trip.ppm|floatformat:2 }}</td>
                             <td>{{ trip.origin_city }}</td>
                             <td>{{ trip.pickup_arrival|time:"H:i"|default:"--" }}</td>
@@ -457,11 +523,10 @@
                             <td>{{ trip.destination_departure|time:"H:i"|default:"--" }}</td>
                             <td class="col-customer"><strong>{{ trip.customer_name|default:"--" }}</strong></td>
                             <td class="col-notes">{{ trip.notes|default:"--" }}</td>
-                            <td><a href="{% url 'edit_trip' trip.id %}" class="action-link">Edit</a></td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="23" style="text-align: center; color: #64748b; padding: 24px;">No trips recorded yet.</td>
+                            <td colspan="24" style="text-align: center; color: #64748b; padding: 24px;">No trips recorded yet.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -482,13 +547,13 @@
             row.className = 'fuel-row';
             row.innerHTML = `
                 <div class="form-group">
-                    <input type="text" name="fuel_stop_location[]" placeholder="e.g. Pilot #102">
+                    <input type="text" name="stop_location[]" placeholder="e.g. Pilot #102">
                 </div>
                 <div class="form-group">
-                    <input type="number" step="0.01" name="fuel_gal[]" class="fuel-gal-input" placeholder="0.00" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.01" name="fuel_gallons[]" class="fuel-gal-input" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
                 <div class="form-group">
-                    <input type="number" step="0.001" name="fuel_ppg[]" class="fuel-ppg-input" placeholder="0.000" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.001" name="fuel_price[]" class="fuel-ppg-input" placeholder="0.000" oninput="calculateLiveTotals()">
                 </div>
                 <button type="button" class="btn-remove-fuel" onclick="removeFuelStop(this)">&times;</button>
             `;
@@ -506,24 +571,26 @@
             }
         }
 
-        // Live calculation of PPM and Running Total
+        // Live calculation of PPM, Net PPM, and Running Total
         function calculateLiveTotals() {
             const pay = parseFloat(document.getElementById('payout').value) || 0;
-            const miles = parseFloat(document.getElementById('miles_total').value) || 0;
             const surcharge = parseFloat(document.getElementById('fuel_surcharge').value) || 0;
+            const loadedMiles = parseFloat(document.getElementById('miles_total').value) || 0;
+            const deadheadMiles = parseFloat(document.getElementById('deadhead_miles').value) || 0;
             const defCost = parseFloat(document.getElementById('def_cost').value) || 0;
             const reefer = parseFloat(document.getElementById('reefer_cost').value) || 0;
             const catScale = parseFloat(document.getElementById('cat_scale').value) || 0;
+            const incidentals = parseFloat(document.getElementById('incidentals').value) || 0;
 
-            // Compute PPM
+            // 1. Gross PPM (Loaded Miles only)
             const ppmField = document.getElementById('ppm');
-            if (miles > 0 && pay > 0) {
-                ppmField.value = '$' + (pay / miles).toFixed(2);
+            if (loadedMiles > 0 && pay > 0) {
+                ppmField.value = '$' + (pay / loadedMiles).toFixed(2);
             } else {
                 ppmField.value = '$0.00';
             }
 
-            // Compute Total Fuel Cost across all stops
+            // 2. Multi-stop Fuel Total
             let fuelTotal = 0;
             const galInputs = document.querySelectorAll('.fuel-gal-input');
             const ppgInputs = document.querySelectorAll('.fuel-ppg-input');
@@ -534,10 +601,57 @@
                 fuelTotal += (gal * ppg);
             }
 
-            // Zach's Formula: Fuel Surcharge - LT (Fuel Total) - DEF - Reefer - CAT Scale
+            // 3. Zach's Formula: Fuel Surcharge - LT (Fuel Total) - DEF - Reefer - CAT Scale
             const runningTotal = surcharge - fuelTotal - defCost - reefer - catScale;
             document.getElementById('running_total').value = (runningTotal < 0 ? '-$' : '$') + Math.abs(runningTotal).toFixed(2);
+
+            // 4. Mission Planner: True Net PPM over All Miles (Loaded + Deadhead)
+            const totalMiles = loadedMiles + deadheadMiles;
+            const totalRevenue = pay + surcharge;
+            const totalExpenses = fuelTotal + defCost + reefer + catScale + incidentals;
+            const netProfit = totalRevenue - totalExpenses;
+
+            const netPpmField = document.getElementById('net_ppm');
+            if (totalMiles > 0) {
+                const netRate = netProfit / totalMiles;
+                netPpmField.value = (netRate < 0 ? '-$' : '$') + Math.abs(netRate).toFixed(2);
+                netPpmField.style.color = netRate >= 1.50 ? '#34d399' : (netRate > 0 ? '#fbbf24' : '#f87171');
+            } else {
+                netPpmField.value = '$0.00';
+                netPpmField.style.color = '#38bdf8';
+            }
         }
+
+        // Live Customer Warning Lookup
+        const customerInput = document.getElementById('customer_name');
+        const warningBanner = document.getElementById('customer-warning-banner');
+        const warningText = document.getElementById('customer-warning-text');
+        let debounceTimer;
+
+        customerInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            const query = this.value.trim();
+
+            if (query.length < 2) {
+                warningBanner.style.display = 'none';
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                fetch(`/api/customer-check/?name=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.warnings && data.warnings.length > 0) {
+                            const noteObj = data.warnings[0];
+                            warningText.innerHTML = `You previously noted on <em>${noteObj.date}</em>:<br><strong>"${noteObj.notes}"</strong>`;
+                            warningBanner.style.display = 'block';
+                        } else {
+                            warningBanner.style.display = 'none';
+                        }
+                    })
+                    .catch(err => console.error('Error fetching customer warning:', err));
+            }, 350);
+        });
 
         // Search customer name and notes in history table
         function filterRunHistory() {

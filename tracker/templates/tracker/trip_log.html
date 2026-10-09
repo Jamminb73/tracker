@@ -204,7 +204,6 @@
             font-size: 13px;
             width: 260px;
         }
-        /* Customer Red Flag Alert Box */
         #customer-warning-banner {
             display: none;
             margin-top: 8px;
@@ -216,7 +215,6 @@
             font-size: 13px;
             line-height: 1.4;
         }
-        /* Status Badges */
         .status-badge {
             padding: 3px 8px;
             border-radius: 4px;
@@ -228,6 +226,10 @@
         .badge-quote { background: #78350f; color: #fde68a; }
         .badge-active { background: #1e3a8a; color: #93c5fd; }
         .badge-delivered { background: #064e3b; color: #6ee7b7; }
+        
+        /* Clean classes to replace inline style template tags */
+        .text-profit { color: #34d399; font-weight: 700; }
+        .text-loss { color: #f87171; font-weight: 700; }
 
         .table-responsive {
             overflow-x: auto;
@@ -276,7 +278,7 @@
         <!-- Main Entry Card -->
         <div class="card">
             <div class="card-header">
-                <h2>Log Trip & Expenses</h2>
+                <h2>Log Trip &amp; Expenses</h2>
             </div>
 
             <form method="POST" id="tripForm" class="form-grid">
@@ -325,7 +327,7 @@
                 </div>
 
                 <!-- Origin Section -->
-                <div class="section-title">Origin & Pickup</div>
+                <div class="section-title">Origin &amp; Pickup</div>
 
                 <div class="form-group">
                     <label for="origin_city">Origin City</label>
@@ -369,7 +371,7 @@
                 </div>
 
                 <!-- Surcharge Deductions & Incidentals -->
-                <div class="section-title">Expenses & Running Total</div>
+                <div class="section-title">Expenses &amp; Running Total</div>
 
                 <div class="form-group">
                     <label for="def_cost">DEF ($)</label>
@@ -388,7 +390,7 @@
 
                 <div class="form-group">
                     <label for="incidentals">Incidentals (Wash, Rad, etc)</label>
-                    <input type="number" step="0.01" id="incidentals" name="incidentals" placeholder="0.00" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.01" id="incidentals" name="incidentals" placeholder="0.00">
                 </div>
 
                 <div class="form-group">
@@ -397,7 +399,7 @@
                 </div>
 
                 <!-- Destination Section -->
-                <div class="section-title">Destination & Delivery</div>
+                <div class="section-title">Destination &amp; Delivery</div>
 
                 <div class="form-group">
                     <label for="destination_city">Destination City</label>
@@ -420,7 +422,7 @@
                 </div>
 
                 <!-- Customer & Notes -->
-                <div class="section-title">Customer & Notes</div>
+                <div class="section-title">Customer &amp; Notes</div>
 
                 <div class="form-group full-width">
                     <label for="customer_name">Customer Name</label>
@@ -451,7 +453,7 @@
         <div class="card">
             <div class="card-header">
                 <div>
-                    <h2>Recent Run History & Bids</h2>
+                    <h2>Recent Run History &amp; Bids</h2>
                     <p style="color: #94a3b8; font-size: 13px;">Filtered by Customer Name or Notes</p>
                 </div>
                 <input type="text" id="tableFilter" class="search-box" placeholder="Search Customer or Notes..." onkeyup="filterRunHistory()">
@@ -513,7 +515,7 @@
                             <td>${{ trip.def_cost|floatformat:2 }}</td>
                             <td>${{ trip.reefer_cost|floatformat:2 }}</td>
                             <td>${{ trip.cat_scale|floatformat:2 }}</td>
-                            <td style="color: {% if trip.running_total >= 0 %}#34d399{% else %}#f87171{% endif %}; font-weight: 700;">
+                            <td class="{% if trip.running_total >= 0 %}text-profit{% else %}text-loss{% endif %}">
                                 ${{ trip.running_total|floatformat:2 }}
                             </td>
                             <td>${{ trip.incidentals|floatformat:2 }}</td>
@@ -540,23 +542,21 @@
             document.getElementById('tripStatus').value = status;
         }
 
-        // Add dynamic fuel stop row
         function addFuelStop() {
             const container = document.getElementById('fuelStopsContainer');
             const row = document.createElement('div');
             row.className = 'fuel-row';
-            row.innerHTML = `
-                <div class="form-group">
-                    <input type="text" name="stop_location[]" placeholder="e.g. Pilot #102">
-                </div>
-                <div class="form-group">
-                    <input type="number" step="0.01" name="fuel_gallons[]" class="fuel-gal-input" placeholder="0.00" oninput="calculateLiveTotals()">
-                </div>
-                <div class="form-group">
-                    <input type="number" step="0.001" name="fuel_price[]" class="fuel-ppg-input" placeholder="0.000" oninput="calculateLiveTotals()">
-                </div>
-                <button type="button" class="btn-remove-fuel" onclick="removeFuelStop(this)">&times;</button>
-            `;
+            row.innerHTML = ''
+                + '<div class="form-group">'
+                + '    <input type="text" name="stop_location[]" placeholder="e.g. Pilot #102">'
+                + '</div>'
+                + '<div class="form-group">'
+                + '    <input type="number" step="0.01" name="fuel_gallons[]" class="fuel-gal-input" placeholder="0.00" oninput="calculateLiveTotals()">'
+                + '</div>'
+                + '<div class="form-group">'
+                + '    <input type="number" step="0.001" name="fuel_price[]" class="fuel-ppg-input" placeholder="0.000" oninput="calculateLiveTotals()">'
+                + '</div>'
+                + '<button type="button" class="btn-remove-fuel" onclick="removeFuelStop(this)">&times;</button>';
             container.insertBefore(row, container.lastElementChild);
         }
 
@@ -571,7 +571,6 @@
             }
         }
 
-        // Live calculation of PPM, Net PPM, and Running Total
         function calculateLiveTotals() {
             const pay = parseFloat(document.getElementById('payout').value) || 0;
             const surcharge = parseFloat(document.getElementById('fuel_surcharge').value) || 0;
@@ -582,7 +581,6 @@
             const catScale = parseFloat(document.getElementById('cat_scale').value) || 0;
             const incidentals = parseFloat(document.getElementById('incidentals').value) || 0;
 
-            // 1. Gross PPM (Loaded Miles only)
             const ppmField = document.getElementById('ppm');
             if (loadedMiles > 0 && pay > 0) {
                 ppmField.value = '$' + (pay / loadedMiles).toFixed(2);
@@ -590,7 +588,6 @@
                 ppmField.value = '$0.00';
             }
 
-            // 2. Multi-stop Fuel Total
             let fuelTotal = 0;
             const galInputs = document.querySelectorAll('.fuel-gal-input');
             const ppgInputs = document.querySelectorAll('.fuel-ppg-input');
@@ -601,11 +598,9 @@
                 fuelTotal += (gal * ppg);
             }
 
-            // 3. Zach's Formula: Fuel Surcharge - LT (Fuel Total) - DEF - Reefer - CAT Scale
             const runningTotal = surcharge - fuelTotal - defCost - reefer - catScale;
             document.getElementById('running_total').value = (runningTotal < 0 ? '-$' : '$') + Math.abs(runningTotal).toFixed(2);
 
-            // 4. Mission Planner: True Net PPM over All Miles (Loaded + Deadhead)
             const totalMiles = loadedMiles + deadheadMiles;
             const totalRevenue = pay + surcharge;
             const totalExpenses = fuelTotal + defCost + reefer + catScale + incidentals;
@@ -622,7 +617,6 @@
             }
         }
 
-        // Live Customer Warning Lookup
         const customerInput = document.getElementById('customer_name');
         const warningBanner = document.getElementById('customer-warning-banner');
         const warningText = document.getElementById('customer-warning-text');
@@ -637,28 +631,27 @@
                 return;
             }
 
-            debounceTimer = setTimeout(() => {
-                fetch(`/api/customer-check/?name=${encodeURIComponent(query)}`)
-                    .then(res => res.json())
-                    .then(data => {
+            debounceTimer = setTimeout(function() {
+                fetch('/api/customer-check/?name=' + encodeURIComponent(query))
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
                         if (data.warnings && data.warnings.length > 0) {
                             const noteObj = data.warnings[0];
-                            warningText.innerHTML = `You previously noted on <em>${noteObj.date}</em>:<br><strong>"${noteObj.notes}"</strong>`;
+                            warningText.innerHTML = 'You previously noted on <em>' + noteObj.date + '</em>:<br><strong>"' + noteObj.notes + '"</strong>';
                             warningBanner.style.display = 'block';
                         } else {
                             warningBanner.style.display = 'none';
                         }
                     })
-                    .catch(err => console.error('Error fetching customer warning:', err));
+                    .catch(function(err) { console.error('Error fetching customer warning:', err); });
             }, 350);
         });
 
-        // Search customer name and notes in history table
         function filterRunHistory() {
             const query = document.getElementById('tableFilter').value.toLowerCase();
             const rows = document.querySelectorAll('#historyTable tbody tr');
 
-            rows.forEach(row => {
+            rows.forEach(function(row) {
                 const customerEl = row.querySelector('.col-customer');
                 const notesEl = row.querySelector('.col-notes');
                 if (!customerEl || !notesEl) return;

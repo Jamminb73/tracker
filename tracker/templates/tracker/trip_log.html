@@ -97,6 +97,10 @@
             color: #cbd5e1;
             margin-bottom: 6px;
         }
+        .label-optional {
+            font-weight: 400;
+            color: #64748b;
+        }
         input, select, textarea {
             padding: 10px 12px;
             background: #0f172a;
@@ -209,9 +213,9 @@
             margin-top: 8px;
             padding: 12px 14px;
             border-radius: 8px;
-            background: rgba(239, 68, 68, 0.12);
-            border: 1px solid #ef4444;
-            color: #fca5a5;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid #334155;
+            color: #cbd5e1;
             font-size: 13px;
             line-height: 1.4;
         }
@@ -227,7 +231,6 @@
         .badge-active { background: #1e3a8a; color: #93c5fd; }
         .badge-delivered { background: #064e3b; color: #6ee7b7; }
         
-        /* Clean classes to replace inline style template tags */
         .text-profit { color: #34d399; font-weight: 700; }
         .text-loss { color: #f87171; font-weight: 700; }
 
@@ -306,18 +309,24 @@
                     <input type="number" step="0.01" id="fuel_surcharge" name="fuel_surcharge" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
+                <!-- Mileage Section: Total Miles Primary, Loaded & Deadhead Optional -->
                 <div class="form-group">
-                    <label for="miles_total">Loaded Miles</label>
+                    <label for="miles_total"><strong>Total Miles (Hub-to-Hub)</strong></label>
                     <input type="number" step="0.1" id="miles_total" name="miles_total" placeholder="0.0" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group">
-                    <label for="deadhead_miles">Deadhead Miles</label>
-                    <input type="number" step="0.1" id="deadhead_miles" name="deadhead_miles" placeholder="0.0" oninput="calculateLiveTotals()">
+                    <label for="loaded_miles">Loaded Miles <span class="label-optional">(Optional)</span></label>
+                    <input type="number" step="0.1" id="loaded_miles" name="loaded_miles" placeholder="Optional" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group">
-                    <label for="ppm">Gross PPM (Loaded)</label>
+                    <label for="deadhead_miles">Deadhead Miles <span class="label-optional">(Optional)</span></label>
+                    <input type="number" step="0.1" id="deadhead_miles" name="deadhead_miles" placeholder="Optional" oninput="calculateLiveTotals()">
+                </div>
+
+                <div class="form-group">
+                    <label for="ppm">Gross Rate / Mile</label>
                     <input type="text" id="ppm" readonly placeholder="$0.00">
                 </div>
 
@@ -425,19 +434,52 @@
                 <div class="section-title">Customer &amp; Notes</div>
 
                 <div class="form-group full-width">
-                    <label for="customer_name">Customer Name</label>
-                    <input type="text" id="customer_name" name="customer_name" placeholder="Searchable customer name" autocomplete="off">
+                    <label for="customer_name">Customer / Facility Name</label>
+                    <input type="text" id="customer_name" name="customer_name" placeholder="Searchable facility name" autocomplete="off">
                     
-                    <!-- Dynamic Red Flag / Customer Notice -->
+                    <!-- Dynamic Warning & Community Intel Banner -->
                     <div id="customer-warning-banner">
-                        <strong style="color: #f87171;">⚠️ Past Customer Note:</strong>
-                        <div id="customer-warning-text" style="margin-top: 4px;"></div>
+                        <div id="personal-warning-block" style="display: none; margin-bottom: 10px; background: rgba(239, 68, 68, 0.12); border: 1px solid #ef4444; border-radius: 6px; padding: 10px;">
+                            <strong style="color: #f87171;">⚠️ Your Past Note:</strong>
+                            <div id="customer-warning-text" style="margin-top: 4px; font-size: 13px; color: #fca5a5;"></div>
+                        </div>
+
+                        <div id="community-reviews-block" style="display: none; border-top: 1px solid #334155; padding-top: 8px; margin-top: 8px;">
+                            <strong style="color: #38bdf8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">🚛 Community Intel (Other Drivers)</strong>
+                            <div id="community-reviews-list" style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;"></div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="form-group full-width">
-                    <label for="notes">Notes</label>
-                    <textarea id="notes" name="notes" rows="2" placeholder="Scale weights, delivery dock info, inspection notes..."></textarea>
+                    <label for="notes">Notes / Driver Intel</label>
+                    <textarea id="notes" name="notes" rows="2" placeholder="Dock info, scale notes, gate instructions..."></textarea>
+                </div>
+
+                <!-- Community Intel Share Options -->
+                <div class="form-group full-width" style="background: #151f30; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin-top: 4px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 0; cursor: pointer; color: #f8fafc; font-size: 13px;">
+                            <input type="checkbox" name="share_review" id="share_review" style="width: 16px; height: 16px; accent-color: #38bdf8;">
+                            Share this note anonymously with other drivers
+                        </label>
+                        
+                        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #94a3b8; cursor: pointer; margin-bottom: 0;">
+                                <input type="checkbox" name="review_parking" style="accent-color: #38bdf8;"> 🅿️ Overnight Parking OK
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #94a3b8; cursor: pointer; margin-bottom: 0;">
+                                <input type="checkbox" name="review_detention" style="accent-color: #f87171;"> ⏳ Long Detention (3+ hrs)
+                            </label>
+
+                            <!-- Interactive Clickable SVG Trailer Rating -->
+                            <div style="display: flex; align-items: center; gap: 8px; background: #0f172a; padding: 4px 10px; border-radius: 6px; border: 1px solid #334155;">
+                                <input type="hidden" name="review_rating" id="review_rating_input" value="5">
+                                <div id="trailer-rating-picker" style="display: flex; align-items: center; gap: 3px;"></div>
+                                <span id="trailer-rating-label" style="font-size: 12px; color: #38bdf8; font-weight: 700; min-width: 80px;">5 Trailers</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Actions -->
@@ -468,9 +510,9 @@
                             <th>Pickup Date</th>
                             <th>Pay</th>
                             <th>Fuel Surcharge</th>
-                            <th>Loaded Mi</th>
+                            <th>Total Mi</th>
                             <th>Deadhead</th>
-                            <th>PPM</th>
+                            <th>Rate/Mi</th>
                             <th>Origin City</th>
                             <th>Arr Time</th>
                             <th>Dep Time</th>
@@ -574,20 +616,25 @@
         function calculateLiveTotals() {
             const pay = parseFloat(document.getElementById('payout').value) || 0;
             const surcharge = parseFloat(document.getElementById('fuel_surcharge').value) || 0;
-            const loadedMiles = parseFloat(document.getElementById('miles_total').value) || 0;
+            const totalMiles = parseFloat(document.getElementById('miles_total').value) || 0;
+            const loadedMiles = parseFloat(document.getElementById('loaded_miles').value) || 0;
             const deadheadMiles = parseFloat(document.getElementById('deadhead_miles').value) || 0;
+            
             const defCost = parseFloat(document.getElementById('def_cost').value) || 0;
             const reefer = parseFloat(document.getElementById('reefer_cost').value) || 0;
             const catScale = parseFloat(document.getElementById('cat_scale').value) || 0;
             const incidentals = parseFloat(document.getElementById('incidentals').value) || 0;
 
+            // Gross Rate Per Mile: Pay / Total Miles
             const ppmField = document.getElementById('ppm');
-            if (loadedMiles > 0 && pay > 0) {
-                ppmField.value = '$' + (pay / loadedMiles).toFixed(2);
+            const milesBasis = totalMiles > 0 ? totalMiles : loadedMiles;
+            if (milesBasis > 0 && pay > 0) {
+                ppmField.value = '$' + (pay / milesBasis).toFixed(2);
             } else {
                 ppmField.value = '$0.00';
             }
 
+            // Fuel Line Totals
             let fuelTotal = 0;
             const galInputs = document.querySelectorAll('.fuel-gal-input');
             const ppgInputs = document.querySelectorAll('.fuel-ppg-input');
@@ -598,17 +645,19 @@
                 fuelTotal += (gal * ppg);
             }
 
+            // Surcharge Running Total
             const runningTotal = surcharge - fuelTotal - defCost - reefer - catScale;
             document.getElementById('running_total').value = (runningTotal < 0 ? '-$' : '$') + Math.abs(runningTotal).toFixed(2);
 
-            const totalMiles = loadedMiles + deadheadMiles;
+            // True Net PPM: Net Profit / Total Miles
+            const totalDistance = totalMiles > 0 ? totalMiles : (loadedMiles + deadheadMiles);
             const totalRevenue = pay + surcharge;
             const totalExpenses = fuelTotal + defCost + reefer + catScale + incidentals;
             const netProfit = totalRevenue - totalExpenses;
 
             const netPpmField = document.getElementById('net_ppm');
-            if (totalMiles > 0) {
-                const netRate = netProfit / totalMiles;
+            if (totalDistance > 0) {
+                const netRate = netProfit / totalDistance;
                 netPpmField.value = (netRate < 0 ? '-$' : '$') + Math.abs(netRate).toFixed(2);
                 netPpmField.style.color = netRate >= 1.50 ? '#34d399' : (netRate > 0 ? '#fbbf24' : '#f87171');
             } else {
@@ -617,9 +666,74 @@
             }
         }
 
+        // Reusable SVG Semi-Trailer Icon Generator
+        function getTrailerSvg(fillColor, width = 24, height = 14) {
+            return '<svg width="' + width + '" height="' + height + '" viewBox="0 0 24 14" fill="' + fillColor + '" style="display: inline-block; vertical-align: middle;">'
+                + '<path d="M1 2h14v8H1V2zm15 3h4l3 3v2h-7V5zm-12 8a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm8 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm7 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/>'
+                + '</svg>';
+        }
+
+        // Render soft blue and slate grey semi-trailer SVGs for community feedback cards
+        function renderTrailerRating(score) {
+            const activeColor = '#38bdf8';   // Soft sky blue
+            const inactiveColor = '#334155'; // Muted dark slate grey
+            let icons = '';
+            for (let i = 1; i <= 5; i++) {
+                icons += getTrailerSvg(i <= score ? activeColor : inactiveColor, 20, 12);
+            }
+            return '<span style="display: inline-flex; align-items: center; gap: 2px;" title="' + score + ' of 5 Trailers">' + icons + '</span>';
+        }
+
+        // Interactive Clickable Trailer Rating Selector
+        let currentPickerRating = 5;
+        const ratingLabels = {
+            0: '0 Trailers (Blacklist)',
+            1: '1 Trailer (Nightmare)',
+            2: '2 Trailers (Rough)',
+            3: '3 Trailers (Average)',
+            4: '4 Trailers (Solid)',
+            5: '5 Trailers (Top Notch)'
+        };
+
+        function updatePickerDisplay(score) {
+            currentPickerRating = score;
+            document.getElementById('review_rating_input').value = score;
+            document.getElementById('trailer-rating-label').textContent = ratingLabels[score] || (score + ' Trailers');
+
+            const container = document.getElementById('trailer-rating-picker');
+            container.innerHTML = '';
+
+            for (let i = 1; i <= 5; i++) {
+                const color = i <= score ? '#38bdf8' : '#334155';
+                const btn = document.createElement('span');
+                btn.style.cursor = 'pointer';
+                btn.style.display = 'inline-flex';
+                btn.title = i + ' Trailers';
+                btn.innerHTML = getTrailerSvg(color, 24, 14);
+
+                btn.onclick = function() {
+                    // Click star 1 again when already at 1 to toggle down to 0
+                    if (currentPickerRating === 1 && i === 1) {
+                        updatePickerDisplay(0);
+                    } else {
+                        updatePickerDisplay(i);
+                    }
+                };
+                container.appendChild(btn);
+            }
+        }
+
+        // Initialize picker immediately
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePickerDisplay(5);
+        });
+
         const customerInput = document.getElementById('customer_name');
         const warningBanner = document.getElementById('customer-warning-banner');
+        const personalBlock = document.getElementById('personal-warning-block');
         const warningText = document.getElementById('customer-warning-text');
+        const commBlock = document.getElementById('community-reviews-block');
+        const commList = document.getElementById('community-reviews-list');
         let debounceTimer;
 
         customerInput.addEventListener('input', function() {
@@ -635,13 +749,49 @@
                 fetch('/api/customer-check/?name=' + encodeURIComponent(query))
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
-                        if (data.warnings && data.warnings.length > 0) {
-                            const noteObj = data.warnings[0];
-                            warningText.innerHTML = 'You previously noted on <em>' + noteObj.date + '</em>:<br><strong>"' + noteObj.notes + '"</strong>';
-                            warningBanner.style.display = 'block';
-                        } else {
+                        const hasPersonal = data.warnings && data.warnings.length > 0;
+                        const hasCommunity = data.community_reviews && data.community_reviews.length > 0;
+
+                        if (!hasPersonal && !hasCommunity) {
                             warningBanner.style.display = 'none';
+                            return;
                         }
+
+                        // Display personal notes
+                        if (hasPersonal) {
+                            const noteObj = data.warnings[0];
+                            warningText.innerHTML = '<em>' + noteObj.date + ' (' + noteObj.trip_number + ')</em>:<br><strong>"' + noteObj.notes + '"</strong>';
+                            personalBlock.style.display = 'block';
+                        } else {
+                            personalBlock.style.display = 'none';
+                        }
+
+                        // Display community driver intel with trailer silhouettes
+                        if (hasCommunity) {
+                            commList.innerHTML = data.community_reviews.map(function(r) {
+                                const trailers = renderTrailerRating(r.rating);
+                                let tags = '';
+                                if (r.overnight_parking) tags += '<span style="color: #34d399; margin-right: 8px;">🅿️ Overnight OK</span>';
+                                if (r.heavy_detention) tags += '<span style="color: #f87171; margin-right: 8px;">⏳ Long Wait</span>';
+
+                                return '<div style="background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid #334155;">'
+                                    + '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">'
+                                    + '  <span style="color: #38bdf8; font-weight: 700; font-size: 12px;">' + r.driver_tag + '</span>'
+                                    + '  <div>' + trailers + '</div>'
+                                    + '</div>'
+                                    + '<div style="color: #cbd5e1; font-size: 13px;">"' + r.comment + '"</div>'
+                                    + '<div style="font-size: 11px; margin-top: 6px; display: flex; justify-content: space-between; color: #64748b;">'
+                                    + '  <div>' + tags + '</div>'
+                                    + '  <span>' + r.date + '</span>'
+                                    + '</div>'
+                                    + '</div>';
+                            }).join('');
+                            commBlock.style.display = 'block';
+                        } else {
+                            commBlock.style.display = 'none';
+                        }
+
+                        warningBanner.style.display = 'block';
                     })
                     .catch(function(err) { console.error('Error fetching customer warning:', err); });
             }, 350);

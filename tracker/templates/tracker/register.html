@@ -72,6 +72,14 @@
         button:hover {
             background: #1d4ed8;
         }
+
+        /* Honeypot hidden container */
+        .secure-gate {
+            position: absolute;
+            left: -9999px;
+            opacity: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -87,9 +95,16 @@
         <form method="POST">
             {% csrf_token %}
 
+            <!-- Bot Honeypot: Hidden from real users, attractive to automated bots -->
+            <div class="secure-gate" aria-hidden="true">
+                <label for="website_url">Leave this field blank</label>
+                <input type="text" id="website_url" name="website_url" tabindex="-1" autocomplete="off">
+                <input type="hidden" id="form_load_time" name="form_load_time" value="">
+            </div>
+
             <div class="form-group">
                 <label for="driver_name">Driver Full Name</label>
-                <input type="text" id="driver_name" name="driver_name" required>
+                <input type="text" id="driver_name" name="driver_name" required autofocus>
             </div>
 
             <div class="form-group">
@@ -120,5 +135,10 @@
             <button type="submit">Complete Registration</button>
         </form>
     </div>
+
+    <script>
+        // Set timestamp in milliseconds when page loads
+        document.getElementById('form_load_time').value = Date.now();
+    </script>
 </body>
 </html>

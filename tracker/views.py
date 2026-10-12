@@ -1,10 +1,11 @@
 import time
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.db.models import Sum, Q
 from django.http import JsonResponse
 from django.utils import timezone
@@ -159,14 +160,34 @@ def customer_warning_check(request):
 
 
 @login_required(login_url='login')
-def trip_log_view(request):
+def trip_log_view(request, trip_id=None):
+    profile = getattr(request.user, 'profile', None)
+
+    # 1. Resolve existing trip if editing via URL
+    active_trip = None
+    if trip_id:
+        active_trip = get_object_or_404(Trip, id=trip_id, driver=request.user)
+        # Prevent editing if already locked (Delivered / Settled)
+        if hasattr(active_trip, 'is_editable') and not active_trip.is_editable:
+            messages.warning(request, f"Trip #{active_trip.trip_number or active_trip.id} is finalized and locked.")
+            return redirect('trip_log')
+
     if request.method == 'POST':
-        # Header / Rates & Mileage
+        # Check if an existing trip ID came through hidden input or URL
+        post_trip_id = request.POST.get('trip_id') or trip_id
+        if post_trip_id:
+            trip = get_object_or_404(Trip, id=post_trip_id, driver=request.user)
+            # Guard against tampering
+            if hasattr(trip, 'is_editable') and not trip.is_editable:
+                messages.error(request, "This trip has already been completed and locked.")
+                return redirect('trip_log')
+        else:
+            trip = Trip(driver=request.user)
+
+        driver_mode = request.POST.get('driver_mode', 'OWNER_OPERATOR')
         trip_number = request.POST.get('trip_number', '').strip()
         bol_number = request.POST.get('bol_number', '').strip()
-        payout = _parse_decimal(request.POST.get('payout'), default='0.00')
-        fuel_surcharge = _parse_decimal(request.POST.get('fuel_surcharge'), default='0.00')
-        
+
         # Mileage Parsing & Intelligent Fallback
         raw_total_miles = _parse_decimal(request.POST.get('miles_total'), default=None)
         raw_loaded_miles = _parse_decimal(request.POST.get('loaded_miles'), default=None)
@@ -182,17 +203,35 @@ def trip_log_view(request):
             miles_total = Decimal('0.0')
             loaded_miles = Decimal('0.0')
 
+        cpm_rate = _parse_decimal(request.POST.get('cpm_rate'), default=None)
+
+        if driver_mode == 'COMPANY':
+            posted_pay = _parse_decimal(request.POST.get('payout'), default=None)
+            if posted_pay is not None and posted_pay > Decimal('0.00'):
+                payout = posted_pay
+            elif cpm_rate and miles_total:
+                payout = round(miles_total * cpm_rate, 2)
+            else:
+                payout = Decimal('0.00')
+
+            fuel_surcharge = Decimal('0.00')
+            def_cost = Decimal('0.00')
+            reefer_cost = Decimal('0.00')
+            cat_scale = Decimal('0.00')
+            incidentals = Decimal('0.00')
+        else:
+            payout = _parse_decimal(request.POST.get('payout'), default='0.00')
+            fuel_surcharge = _parse_decimal(request.POST.get('fuel_surcharge'), default='0.00')
+            def_cost = _parse_decimal(request.POST.get('def_cost'), default='0.00')
+            reefer_cost = _parse_decimal(request.POST.get('reefer_cost'), default='0.00')
+            cat_scale = _parse_decimal(request.POST.get('cat_scale'), default='0.00')
+            incidentals = _parse_decimal(request.POST.get('incidentals'), default='0.00')
+
         # Origin & Pickup
         origin_city = request.POST.get('origin_city', '').strip()
         pickup_date = request.POST.get('pickup_date') or None
         pickup_arrival = request.POST.get('pickup_arrival') or None
         pickup_departure = request.POST.get('pickup_departure') or None
-
-        # Surcharge Deductions & Trip Expenses
-        def_cost = _parse_decimal(request.POST.get('def_cost'), default='0.00')
-        reefer_cost = _parse_decimal(request.POST.get('reefer_cost'), default='0.00')
-        cat_scale = _parse_decimal(request.POST.get('cat_scale'), default='0.00')
-        incidentals = _parse_decimal(request.POST.get('incidentals'), default='0.00')
 
         # Destination & Delivery
         destination_city = request.POST.get('destination_city', '').strip()
@@ -204,77 +243,93 @@ def trip_log_view(request):
         customer_name = request.POST.get('customer_name', '').strip()
         notes = request.POST.get('notes', '').strip()
 
-        # Trip Status
-        if 'plan_mission' in request.POST:
+        # Status transition by submit button clicked:
+        # Check both name="<button_name>" and name="action" value="<button_name>"
+        action = request.POST.get('action', '')
+        if 'plan_mission' in request.POST or action in ['plan_mission', 'quote']:
             status = 'Quote / Planner'
-        elif 'complete_trip' in request.POST:
+        elif 'complete_trip' in request.POST or action == 'complete_trip':
             status = 'Delivered'
         else:
-            status = 'In Transit'
+            # "Save Daily Log"
+            status = 'In Transit' if trip.status in ['Quote / Planner', None, ''] else trip.status
 
-        # 1. Create the Trip
-        trip = Trip.objects.create(
-            driver=request.user,
-            trip_number=trip_number,
-            bol_number=bol_number,
-            payout=payout,
-            fuel_surcharge=fuel_surcharge,
-            miles_total=miles_total,
-            loaded_miles=loaded_miles,
-            deadhead_miles=deadhead_miles,
-            origin_city=origin_city,
-            pickup_date=pickup_date,
-            pickup_arrival=pickup_arrival,
-            pickup_departure=pickup_departure,
-            def_cost=def_cost,
-            reefer_cost=reefer_cost,
-            cat_scale=cat_scale,
-            incidentals=incidentals,
-            destination_city=destination_city,
-            destination_date=destination_date,
-            destination_arrival=destination_arrival,
-            destination_departure=destination_departure,
-            customer_name=customer_name,
-            notes=notes,
-            status=status
-        )
+        # Update Trip instance
+        trip.driver_mode = driver_mode
+        trip.trip_number = trip_number
+        trip.bol_number = bol_number
+        trip.payout = payout
+        trip.cpm_rate = cpm_rate
+        trip.fuel_surcharge = fuel_surcharge
+        trip.miles_total = miles_total
+        trip.loaded_miles = loaded_miles
+        trip.deadhead_miles = deadhead_miles
+        trip.origin_city = origin_city
+        trip.pickup_date = pickup_date
+        trip.pickup_arrival = pickup_arrival
+        trip.pickup_departure = pickup_departure
+        trip.def_cost = def_cost
+        trip.reefer_cost = reefer_cost
+        trip.cat_scale = cat_scale
+        trip.incidentals = incidentals
+        trip.destination_city = destination_city
+        trip.destination_date = destination_date
+        trip.destination_arrival = destination_arrival
+        trip.destination_departure = destination_departure
+        trip.customer_name = customer_name
+        trip.notes = notes
+        trip.status = status
+        trip.save()
 
-        # 2. Save individual fuel stop lines if submitted
-        locations = request.POST.getlist('stop_location[]')
-        gallons_list = request.POST.getlist('fuel_gallons[]')
-        prices_list = request.POST.getlist('fuel_price[]')
+        # Sync Fuel Stops (for Owner-Operators)
+        if driver_mode != 'COMPANY':
+            trip.fuel_stops.all().delete()
+            locations = request.POST.getlist('stop_location[]') or request.POST.getlist('fuel_location[]')
+            gallons_list = request.POST.getlist('fuel_gallons[]')
+            prices_list = request.POST.getlist('fuel_price[]')
 
-        for loc, gal, price in zip(locations, gallons_list, prices_list):
-            if gal and price:
-                try:
-                    FuelStop.objects.create(
-                        trip=trip,
-                        stop_location=loc.strip(),
-                        gallons=Decimal(str(gal).strip()),
-                        price_per_gallon=Decimal(str(price).strip())
-                    )
-                except (InvalidOperation, ValueError, TypeError):
-                    pass
+            for loc, gal, price in zip(locations, gallons_list, prices_list):
+                if gal and price:
+                    try:
+                        FuelStop.objects.create(
+                            trip=trip,
+                            stop_location=loc.strip(),
+                            gallons=Decimal(str(gal).strip()),
+                            price_per_gallon=Decimal(str(price).strip())
+                        )
+                    except (InvalidOperation, ValueError, TypeError):
+                        pass
+        else:
+            trip.fuel_stops.all().delete()
 
-        # 3. Optional: Save shared community review if driver opted in
+        # Optional: Save/Update shared community review
         if request.POST.get('share_review') and customer_name and notes:
             rating = int(request.POST.get('review_rating', 5))
-            overnight_parking = request.POST.get('review_parking') == 'on'
-            heavy_detention = request.POST.get('review_detention') == 'on'
-            
-            CustomerReview.objects.create(
+            overnight_parking = request.POST.get('review_parking') == 'on' or request.POST.get('overnight_parking') == 'on'
+            heavy_detention = request.POST.get('review_detention') == 'on' or request.POST.get('heavy_detention') == 'on'
+
+            CustomerReview.objects.update_or_create(
                 author=request.user,
                 customer_name=customer_name,
-                comment=notes,
-                rating=rating,
-                overnight_parking=overnight_parking,
-                heavy_detention=heavy_detention
+                defaults={
+                    'comment': notes,
+                    'rating': rating,
+                    'overnight_parking': overnight_parking,
+                    'heavy_detention': heavy_detention,
+                }
             )
+
+        if status == 'Delivered':
+            messages.success(request, f"Trip #{trip.trip_number or trip.id} completed & delivered!")
+        elif post_trip_id:
+            messages.success(request, f"Trip #{trip.trip_number or trip.id} updated successfully.")
+        else:
+            messages.success(request, "New trip logged successfully.")
 
         return redirect('trip_log')
 
-    # Query all trips for the history table
-    all_trips = Trip.objects.filter(driver=request.user)
+    # Query trips for history table
+    all_trips = Trip.objects.filter(driver=request.user).prefetch_related('fuel_stops').order_by('-created_at')
     actual_trips = all_trips.exclude(status='Quote / Planner')
 
     # 1. Miles this week (last 7 days by pickup_date)
@@ -304,10 +359,17 @@ def trip_log_view(request):
     # 3. Active settlements
     active_settlements = actual_trips.aggregate(Sum('payout'))['payout__sum'] or Decimal('0.00')
 
+    # Profile defaults
+    default_driver_mode = getattr(profile, 'default_driver_type', 'OWNER_OPERATOR') if profile else 'OWNER_OPERATOR'
+    default_cpm = getattr(profile, 'default_cpm', None) if profile else None
+
     context = {
+        'active_trip': active_trip,
         'trips': all_trips,
         'miles_this_week': miles_this_week,
         'avg_mpg': avg_mpg,
         'active_settlements': active_settlements,
+        'default_driver_mode': default_driver_mode,
+        'default_cpm': default_cpm or '',
     }
     return render(request, 'tracker/trip_log.html', context)

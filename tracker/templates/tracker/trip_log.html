@@ -57,18 +57,78 @@
         .card-header {
             margin-bottom: 20px;
             border-bottom: 1px solid #334155;
-            padding-bottom: 12px;
+            padding-bottom: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 16px;
         }
         .card-header h2 {
             font-size: 20px;
             color: #ffffff;
             font-weight: 700;
         }
+
+        /* Editing Banner */
+        .edit-banner {
+            grid-column: 1 / -1;
+            background: rgba(120, 53, 15, 0.4);
+            border: 1px solid rgba(245, 158, 11, 0.5);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fde68a;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .btn-cancel-edit {
+            background: #0f172a;
+            color: #cbd5e1;
+            border: 1px solid #475569;
+            padding: 6px 12px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .btn-cancel-edit:hover {
+            background: #334155;
+            color: #ffffff;
+        }
+
+        /* Segmented Mode Switcher */
+        .mode-toggle-group {
+            display: inline-flex;
+            background: #0f172a;
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            gap: 4px;
+        }
+        .mode-btn {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .mode-btn.active {
+            background: #0284c7;
+            color: #ffffff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .mode-btn:hover:not(.active) {
+            color: #f1f5f9;
+        }
+
         .section-title {
             grid-column: 1 / -1;
             font-size: 14px;
@@ -231,6 +291,29 @@
         .badge-active { background: #1e3a8a; color: #93c5fd; }
         .badge-delivered { background: #064e3b; color: #6ee7b7; }
         
+        .btn-edit-action {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-edit-action:hover {
+            background: rgba(245, 158, 11, 0.3);
+            color: #fef3c7;
+        }
+        .locked-badge {
+            font-size: 11px;
+            color: #64748b;
+            font-family: monospace;
+        }
+
         .text-profit { color: #34d399; font-weight: 700; }
         .text-loss { color: #f87171; font-weight: 700; }
 
@@ -260,11 +343,6 @@
         tr:hover td {
             background: rgba(255, 255, 255, 0.02);
         }
-        .action-link {
-            color: #38bdf8;
-            text-decoration: none;
-            font-weight: 600;
-        }
     </style>
 </head>
 <body>
@@ -282,55 +360,85 @@
         <div class="card">
             <div class="card-header">
                 <h2>Log Trip &amp; Expenses</h2>
+                
+                <!-- Mode Switcher -->
+                <div class="mode-toggle-group">
+                    <button type="button" class="mode-btn" id="btnModeCompany" onclick="switchMode('COMPANY')">Company Driver</button>
+                    <button type="button" class="mode-btn" id="btnModeOwner" onclick="switchMode('OWNER_OPERATOR')">Owner-Op / Lease</button>
+                </div>
             </div>
 
-            <form method="POST" id="tripForm" class="form-grid">
+            <form method="POST" action="{% url 'trip_log' %}" id="tripForm" class="form-grid">
                 {% csrf_token %}
-                <input type="hidden" name="status" id="tripStatus" value="In Transit">
+                <input type="hidden" name="status" id="tripStatus" value="{{ active_trip.status|default:'In Transit' }}">
+                <input type="hidden" name="driver_mode" id="driverModeInput" value="{{ active_trip.driver_mode|default:default_driver_mode|default:'OWNER_OPERATOR' }}">
 
-                <!-- Primary Identifiers & Pay -->
+                <!-- Active Edit Banner & Hidden ID -->
+                {% if active_trip %}
+                <input type="hidden" name="trip_id" value="{{ active_trip.id }}">
+                <div class="edit-banner">
+                    <div>
+                        <span>✏️ Currently Editing: <strong>{{ active_trip.status }}</strong> (Trip #{{ active_trip.trip_number|default:active_trip.id }})</span>
+                    </div>
+                    <a href="{% url 'trip_log' %}" class="btn-cancel-edit">Cancel &amp; Start Fresh</a>
+                </div>
+                {% endif %}
+
+                <!-- Primary Identifiers -->
                 <div class="form-group">
                     <label for="trip_number">Trip Number</label>
-                    <input type="text" id="trip_number" name="trip_number" placeholder="e.g. TR-1049">
+                    <input type="text" id="trip_number" name="trip_number" value="{{ active_trip.trip_number|default:'' }}" placeholder="e.g. TR-1049">
                 </div>
 
                 <div class="form-group">
                     <label for="bol_number">BOL #</label>
-                    <input type="text" id="bol_number" name="bol_number" placeholder="e.g. BOL-99482">
+                    <input type="text" id="bol_number" name="bol_number" value="{{ active_trip.bol_number|default:'' }}" placeholder="e.g. BOL-99482">
                 </div>
 
-                <div class="form-group">
+                <!-- Company Mode Pay Fields -->
+                <div class="form-group mode-company-only" style="display: none;">
+                    <label for="cpm_rate">Cents Per Mile (CPM $)</label>
+                    <input type="number" step="0.001" id="cpm_rate" name="cpm_rate" value="{{ active_trip.cpm_rate|default:default_cpm }}" placeholder="0.58" oninput="calculateLiveTotals()">
+                </div>
+
+                <div class="form-group mode-company-only" style="display: none;">
+                    <label for="company_estimated_pay">Estimated Pay (Miles &times; CPM)</label>
+                    <input type="text" id="company_estimated_pay" readonly placeholder="$0.00">
+                </div>
+
+                <!-- Owner-Op Mode Pay Fields -->
+                <div class="form-group mode-owner-only">
                     <label for="payout">Pay ($)</label>
-                    <input type="number" step="0.01" id="payout" name="payout" placeholder="0.00" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.01" id="payout" name="payout" value="{{ active_trip.payout|default:'0.00' }}" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group mode-owner-only">
                     <label for="fuel_surcharge">Fuel Surcharge ($)</label>
-                    <input type="number" step="0.01" id="fuel_surcharge" name="fuel_surcharge" placeholder="0.00" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.01" id="fuel_surcharge" name="fuel_surcharge" value="{{ active_trip.fuel_surcharge|default:'0.00' }}" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
-                <!-- Mileage Section: Total Miles Primary, Loaded & Deadhead Optional -->
+                <!-- Mileage Section -->
                 <div class="form-group">
                     <label for="miles_total"><strong>Total Miles (Hub-to-Hub)</strong></label>
-                    <input type="number" step="0.1" id="miles_total" name="miles_total" placeholder="0.0" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.1" id="miles_total" name="miles_total" value="{{ active_trip.miles_total|default:'0.0' }}" placeholder="0.0" oninput="calculateLiveTotals()">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group mode-owner-only">
                     <label for="loaded_miles">Loaded Miles <span class="label-optional">(Optional)</span></label>
-                    <input type="number" step="0.1" id="loaded_miles" name="loaded_miles" placeholder="Optional" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.1" id="loaded_miles" name="loaded_miles" value="{{ active_trip.loaded_miles|default:'' }}" placeholder="Optional" oninput="calculateLiveTotals()">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group mode-owner-only">
                     <label for="deadhead_miles">Deadhead Miles <span class="label-optional">(Optional)</span></label>
-                    <input type="number" step="0.1" id="deadhead_miles" name="deadhead_miles" placeholder="Optional" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.1" id="deadhead_miles" name="deadhead_miles" value="{{ active_trip.deadhead_miles|default:'0.0' }}" placeholder="Optional" oninput="calculateLiveTotals()">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group mode-owner-only">
                     <label for="ppm">Gross Rate / Mile</label>
                     <input type="text" id="ppm" readonly placeholder="$0.00">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group mode-owner-only">
                     <label for="net_ppm">True Net PPM (All Miles)</label>
                     <input type="text" id="net_ppm" readonly placeholder="$0.00">
                 </div>
@@ -340,69 +448,89 @@
 
                 <div class="form-group">
                     <label for="origin_city">Origin City</label>
-                    <input type="text" id="origin_city" name="origin_city" placeholder="City, ST">
+                    <input type="text" id="origin_city" name="origin_city" value="{{ active_trip.origin_city|default:'' }}" placeholder="City, ST">
                 </div>
 
                 <div class="form-group">
                     <label for="pickup_date">Pickup Date</label>
-                    <input type="date" id="pickup_date" name="pickup_date">
+                    <input type="date" id="pickup_date" name="pickup_date" value="{{ active_trip.pickup_date|date:'Y-m-d'|default:'' }}">
                 </div>
 
                 <div class="form-group">
                     <label for="pickup_arrival">Arrival Time</label>
-                    <input type="time" id="pickup_arrival" name="pickup_arrival">
+                    <input type="time" id="pickup_arrival" name="pickup_arrival" value="{{ active_trip.pickup_arrival|time:'H:i'|default:'' }}">
                 </div>
 
                 <div class="form-group">
                     <label for="pickup_departure">Departure Time</label>
-                    <input type="time" id="pickup_departure" name="pickup_departure">
+                    <input type="time" id="pickup_departure" name="pickup_departure" value="{{ active_trip.pickup_departure|time:'H:i'|default:'' }}">
                 </div>
 
-                <!-- Multiple Fuel Stops -->
-                <div class="section-title">Fuel Stops</div>
-                <div class="fuel-stops-wrap" id="fuelStopsContainer">
-                    <div class="fuel-row">
-                        <div class="form-group">
-                            <label>Location / Stop</label>
-                            <input type="text" name="stop_location[]" placeholder="e.g. Loves #412">
+                <!-- Multiple Fuel Stops (Owner-Op Only) -->
+                <div class="section-title mode-owner-only">Fuel Stops</div>
+                <div class="fuel-stops-wrap mode-owner-only" id="fuelStopsContainer">
+                    {% if active_trip and active_trip.fuel_stops.all %}
+                        {% for stop in active_trip.fuel_stops.all %}
+                        <div class="fuel-row">
+                            <div class="form-group">
+                                <label>Location / Stop</label>
+                                <input type="text" name="stop_location[]" value="{{ stop.stop_location }}" placeholder="e.g. Loves #412">
+                            </div>
+                            <div class="form-group">
+                                <label>Fuel Gal</label>
+                                <input type="number" step="0.01" name="fuel_gallons[]" class="fuel-gal-input" value="{{ stop.gallons }}" placeholder="0.00" oninput="calculateLiveTotals()">
+                            </div>
+                            <div class="form-group">
+                                <label>Price / Gallon</label>
+                                <input type="number" step="0.001" name="fuel_price[]" class="fuel-ppg-input" value="{{ stop.price_per_gallon }}" placeholder="0.000" oninput="calculateLiveTotals()">
+                            </div>
+                            <button type="button" class="btn-remove-fuel" onclick="removeFuelStop(this)">&times;</button>
                         </div>
-                        <div class="form-group">
-                            <label>Fuel Gal</label>
-                            <input type="number" step="0.01" name="fuel_gallons[]" class="fuel-gal-input" placeholder="0.00" oninput="calculateLiveTotals()">
+                        {% endfor %}
+                    {% else %}
+                        <div class="fuel-row">
+                            <div class="form-group">
+                                <label>Location / Stop</label>
+                                <input type="text" name="stop_location[]" placeholder="e.g. Loves #412">
+                            </div>
+                            <div class="form-group">
+                                <label>Fuel Gal</label>
+                                <input type="number" step="0.01" name="fuel_gallons[]" class="fuel-gal-input" placeholder="0.00" oninput="calculateLiveTotals()">
+                            </div>
+                            <div class="form-group">
+                                <label>Price / Gallon</label>
+                                <input type="number" step="0.001" name="fuel_price[]" class="fuel-ppg-input" placeholder="0.000" oninput="calculateLiveTotals()">
+                            </div>
+                            <button type="button" class="btn-remove-fuel" onclick="removeFuelStop(this)">&times;</button>
                         </div>
-                        <div class="form-group">
-                            <label>Price / Gallon</label>
-                            <input type="number" step="0.001" name="fuel_price[]" class="fuel-ppg-input" placeholder="0.000" oninput="calculateLiveTotals()">
-                        </div>
-                        <button type="button" class="btn-remove-fuel" onclick="removeFuelStop(this)">&times;</button>
-                    </div>
+                    {% endif %}
                     <button type="button" class="btn-add-fuel" onclick="addFuelStop()">+ Add Fuel Stop</button>
                 </div>
 
-                <!-- Surcharge Deductions & Incidentals -->
-                <div class="section-title">Expenses &amp; Running Total</div>
+                <!-- Surcharge Deductions & Incidentals (Owner-Op Only) -->
+                <div class="section-title mode-owner-only">Expenses &amp; Running Total</div>
 
-                <div class="form-group">
+                <div class="form-group mode-owner-only">
                     <label for="def_cost">DEF ($)</label>
-                    <input type="number" step="0.01" id="def_cost" name="def_cost" placeholder="0.00" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.01" id="def_cost" name="def_cost" value="{{ active_trip.def_cost|default:'0.00' }}" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group mode-owner-only">
                     <label for="reefer_cost">Reefer ($)</label>
-                    <input type="number" step="0.01" id="reefer_cost" name="reefer_cost" value="0.00" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.01" id="reefer_cost" name="reefer_cost" value="{{ active_trip.reefer_cost|default:'0.00' }}" oninput="calculateLiveTotals()">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group mode-owner-only">
                     <label for="cat_scale">CAT Scale ($)</label>
-                    <input type="number" step="0.01" id="cat_scale" name="cat_scale" placeholder="0.00" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.01" id="cat_scale" name="cat_scale" value="{{ active_trip.cat_scale|default:'0.00' }}" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group mode-owner-only">
                     <label for="incidentals">Incidentals (Wash, Rad, etc)</label>
-                    <input type="number" step="0.01" id="incidentals" name="incidentals" placeholder="0.00">
+                    <input type="number" step="0.01" id="incidentals" name="incidentals" value="{{ active_trip.incidentals|default:'0.00' }}" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group mode-owner-only">
                     <label for="running_total">Running Total (Surcharge - Costs)</label>
                     <input type="text" id="running_total" readonly placeholder="$0.00">
                 </div>
@@ -412,22 +540,22 @@
 
                 <div class="form-group">
                     <label for="destination_city">Destination City</label>
-                    <input type="text" id="destination_city" name="destination_city" placeholder="City, ST">
+                    <input type="text" id="destination_city" name="destination_city" value="{{ active_trip.destination_city|default:'' }}" placeholder="City, ST">
                 </div>
 
                 <div class="form-group">
                     <label for="destination_date">Delivery Date</label>
-                    <input type="date" id="destination_date" name="destination_date">
+                    <input type="date" id="destination_date" name="destination_date" value="{{ active_trip.destination_date|date:'Y-m-d'|default:'' }}">
                 </div>
 
                 <div class="form-group">
                     <label for="destination_arrival">Arrival Time</label>
-                    <input type="time" id="destination_arrival" name="destination_arrival">
+                    <input type="time" id="destination_arrival" name="destination_arrival" value="{{ active_trip.destination_arrival|time:'H:i'|default:'' }}">
                 </div>
 
                 <div class="form-group">
                     <label for="destination_departure">Departure Time</label>
-                    <input type="time" id="destination_departure" name="destination_departure">
+                    <input type="time" id="destination_departure" name="destination_departure" value="{{ active_trip.destination_departure|time:'H:i'|default:'' }}">
                 </div>
 
                 <!-- Customer & Notes -->
@@ -435,7 +563,7 @@
 
                 <div class="form-group full-width">
                     <label for="customer_name">Customer / Facility Name</label>
-                    <input type="text" id="customer_name" name="customer_name" placeholder="Searchable facility name" autocomplete="off">
+                    <input type="text" id="customer_name" name="customer_name" value="{{ active_trip.customer_name|default:'' }}" placeholder="Searchable facility name" autocomplete="off">
                     
                     <!-- Dynamic Warning & Community Intel Banner -->
                     <div id="customer-warning-banner">
@@ -453,7 +581,7 @@
 
                 <div class="form-group full-width">
                     <label for="notes">Notes / Driver Intel</label>
-                    <textarea id="notes" name="notes" rows="2" placeholder="Dock info, scale notes, gate instructions..."></textarea>
+                    <textarea id="notes" name="notes" rows="2" placeholder="Dock info, scale notes, gate instructions...">{{ active_trip.notes|default:'' }}</textarea>
                 </div>
 
                 <!-- Community Intel Share Options -->
@@ -504,6 +632,7 @@
                 <table id="historyTable">
                     <thead>
                         <tr>
+                            <th>Action</th>
                             <th>Status</th>
                             <th>Trip #</th>
                             <th>BOL #</th>
@@ -533,6 +662,15 @@
                     <tbody>
                         {% for trip in trips %}
                         <tr>
+                            <td>
+                                {% if trip.status != 'Delivered' and trip.status != 'Settled' %}
+                                    <a href="{% url 'trip_log_edit' trip.id %}" class="btn-edit-action">
+                                        ✏️ Edit
+                                    </a>
+                                {% else %}
+                                    <span class="locked-badge">🔒 Locked</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if trip.status == 'Quote / Planner' %}
                                     <span class="status-badge badge-quote">Quote</span>
@@ -570,7 +708,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="24" style="text-align: center; color: #64748b; padding: 24px;">No trips recorded yet.</td>
+                            <td colspan="25" style="text-align: center; color: #64748b; padding: 24px;">No trips recorded yet.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -580,6 +718,34 @@
     </div>
 
     <script>
+        let currentMode = '{{ active_trip.driver_mode|default:default_driver_mode|default:"OWNER_OPERATOR" }}';
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('driverModeInput').value = mode;
+
+            const btnCompany = document.getElementById('btnModeCompany');
+            const btnOwner = document.getElementById('btnModeOwner');
+            const ownerElements = document.querySelectorAll('.mode-owner-only');
+            const companyElements = document.querySelectorAll('.mode-company-only');
+
+            if (mode === 'COMPANY') {
+                btnCompany.classList.add('active');
+                btnOwner.classList.remove('active');
+
+                ownerElements.forEach(el => el.style.display = 'none');
+                companyElements.forEach(el => el.style.display = 'flex');
+            } else {
+                btnOwner.classList.add('active');
+                btnCompany.classList.remove('active');
+
+                companyElements.forEach(el => el.style.display = 'none');
+                ownerElements.forEach(el => el.style.display = '');
+            }
+
+            calculateLiveTotals();
+        }
+
         function setTripStatus(status) {
             document.getElementById('tripStatus').value = status;
         }
@@ -614,9 +780,18 @@
         }
 
         function calculateLiveTotals() {
+            const totalMiles = parseFloat(document.getElementById('miles_total').value) || 0;
+
+            if (currentMode === 'COMPANY') {
+                const cpm = parseFloat(document.getElementById('cpm_rate').value) || 0;
+                const estPay = totalMiles * cpm;
+                document.getElementById('company_estimated_pay').value = '$' + estPay.toFixed(2);
+                return;
+            }
+
+            // Owner-Op calculations
             const pay = parseFloat(document.getElementById('payout').value) || 0;
             const surcharge = parseFloat(document.getElementById('fuel_surcharge').value) || 0;
-            const totalMiles = parseFloat(document.getElementById('miles_total').value) || 0;
             const loadedMiles = parseFloat(document.getElementById('loaded_miles').value) || 0;
             const deadheadMiles = parseFloat(document.getElementById('deadhead_miles').value) || 0;
             
@@ -675,8 +850,8 @@
 
         // Render soft blue and slate grey semi-trailer SVGs for community feedback cards
         function renderTrailerRating(score) {
-            const activeColor = '#38bdf8';   // Soft sky blue
-            const inactiveColor = '#334155'; // Muted dark slate grey
+            const activeColor = '#38bdf8';
+            const inactiveColor = '#334155';
             let icons = '';
             for (let i = 1; i <= 5; i++) {
                 icons += getTrailerSvg(i <= score ? activeColor : inactiveColor, 20, 12);
@@ -684,7 +859,6 @@
             return '<span style="display: inline-flex; align-items: center; gap: 2px;" title="' + score + ' of 5 Trailers">' + icons + '</span>';
         }
 
-        // Interactive Clickable Trailer Rating Selector
         let currentPickerRating = 5;
         const ratingLabels = {
             0: '0 Trailers (Blacklist)',
@@ -712,7 +886,6 @@
                 btn.innerHTML = getTrailerSvg(color, 24, 14);
 
                 btn.onclick = function() {
-                    // Click star 1 again when already at 1 to toggle down to 0
                     if (currentPickerRating === 1 && i === 1) {
                         updatePickerDisplay(0);
                     } else {
@@ -723,9 +896,11 @@
             }
         }
 
-        // Initialize picker immediately
         document.addEventListener('DOMContentLoaded', function() {
             updatePickerDisplay(5);
+            // Initialize mode toggle and recalculate metrics
+            switchMode(currentMode);
+            calculateLiveTotals();
         });
 
         const customerInput = document.getElementById('customer_name');
@@ -746,7 +921,7 @@
             }
 
             debounceTimer = setTimeout(function() {
-                fetch('/api/customer-check/?name=' + encodeURIComponent(query))
+                fetch('/customer-check/?name=' + encodeURIComponent(query))
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         const hasPersonal = data.warnings && data.warnings.length > 0;
@@ -757,7 +932,6 @@
                             return;
                         }
 
-                        // Display personal notes
                         if (hasPersonal) {
                             const noteObj = data.warnings[0];
                             warningText.innerHTML = '<em>' + noteObj.date + ' (' + noteObj.trip_number + ')</em>:<br><strong>"' + noteObj.notes + '"</strong>';
@@ -766,7 +940,6 @@
                             personalBlock.style.display = 'none';
                         }
 
-                        // Display community driver intel with trailer silhouettes
                         if (hasCommunity) {
                             commList.innerHTML = data.community_reviews.map(function(r) {
                                 const trailers = renderTrailerRating(r.rating);

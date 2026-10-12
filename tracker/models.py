@@ -12,10 +12,30 @@ class DriverProfile(models.Model):
         ('EXPIRED', 'Subscription Expired'),
     ]
 
+    DRIVER_TYPE_CHOICES = [
+        ('OWNER_OPERATOR', 'Owner-Operator / Lease'),
+        ('COMPANY', 'Company Driver'),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     phone = models.CharField(max_length=20, blank=True)
     llc_name = models.CharField(max_length=150, blank=True)
     truck_number = models.CharField(max_length=50)
+
+    # Driver Logging Defaults
+    default_driver_type = models.CharField(
+        max_length=20,
+        choices=DRIVER_TYPE_CHOICES,
+        default='OWNER_OPERATOR',
+        verbose_name="Default Logging Mode"
+    )
+    default_cpm = models.DecimalField(
+        max_digits=5,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        verbose_name="Default CPM ($/mi)"
+    )
 
     # Subscription / Access Management
     tier = models.CharField(max_length=30, choices=TIER_CHOICES, default='BETA_LIFETIME')
@@ -37,6 +57,12 @@ class DriverProfile(models.Model):
 
 
 class Trip(models.Model):
+
+    @property
+    def is_editable(self):
+        """Locked once Delivered or Settled."""
+        return self.status not in ['Delivered', 'Settled']
+    
     STATUS_CHOICES = [
         ('Quote / Planner', 'Quote / Mission Planner'),
         ('Booked', 'Booked / Scheduled'),
@@ -46,7 +72,18 @@ class Trip(models.Model):
         ('Settled', 'Settled'),
     ]
 
+    DRIVER_MODE_CHOICES = [
+        ('OWNER_OPERATOR', 'Owner-Operator / Lease'),
+        ('COMPANY', 'Company Driver'),
+    ]
+
     driver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trips')
+    driver_mode = models.CharField(
+        max_length=20,
+        choices=DRIVER_MODE_CHOICES,
+        default='OWNER_OPERATOR',
+        verbose_name="Driver Mode"
+    )
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Delivered')
 
     trip_number = models.CharField(max_length=50, blank=True)
@@ -54,6 +91,7 @@ class Trip(models.Model):
 
     # Financials & Mileage
     payout = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Pay ($)")
+    cpm_rate = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True, verbose_name="Cents Per Mile ($)")
     fuel_surcharge = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="Fuel Surcharge ($)")
 
     # Primary driver input: Total odometer / routed miles
@@ -107,7 +145,9 @@ class Trip(models.Model):
 
     @property
     def ppm(self):
-        """Gross Rate Per Mile: Pay / Total Miles."""
+        """Gross Rate Per Mile: Pay / Total Miles (or directly the CPM in company mode)."""
+        if self.driver_mode == 'COMPANY' and self.cpm_rate:
+            return round(self.cpm_rate, 2)
         if self.miles_total and self.miles_total > 0:
             return round(self.payout / self.miles_total, 2)
         return Decimal('0.00')
@@ -115,6 +155,8 @@ class Trip(models.Model):
     @property
     def total_fuel_cost(self):
         """Calculates total fuel expense across multiple fuel lines, or falls back to quick-log."""
+        if self.driver_mode == 'COMPANY':
+            return Decimal('0.00')
         stops = self.fuel_stops.all()
         if stops.exists():
             return sum((stop.gallons * stop.price_per_gallon for stop in stops), Decimal('0.00'))
@@ -125,6 +167,8 @@ class Trip(models.Model):
     @property
     def running_total(self):
         """Zach's Formula: Fuel Surcharge - LT (Fuel Total) - DEF - Reefer - CAT Scale."""
+        if self.driver_mode == 'COMPANY':
+            return Decimal('0.00')
         return (
             (self.fuel_surcharge or Decimal('0.00'))
             - self.total_fuel_cost
@@ -137,6 +181,8 @@ class Trip(models.Model):
     @property
     def total_expenses(self):
         """All out-of-pocket costs on this load."""
+        if self.driver_mode == 'COMPANY':
+            return Decimal('0.00')
         return (
             self.total_fuel_cost
             + (self.def_cost or Decimal('0.00'))
@@ -148,19 +194,29 @@ class Trip(models.Model):
     @property
     def net_profit(self):
         """True money left after diesel and road expenses."""
+        if self.driver_mode == 'COMPANY':
+            return self.payout or Decimal('0.00')
         return self.gross_revenue - self.total_expenses
 
     @property
     def net_ppm(self):
         """True take-home per mile driven."""
+        if self.driver_mode == 'COMPANY' and self.cpm_rate:
+            return round(self.cpm_rate, 2)
         if self.miles_total and self.miles_total > 0:
             return round(self.net_profit / self.miles_total, 2)
         return Decimal('0.00')
 
     def save(self, *args, **kwargs):
+        # In Company Mode: If payout is 0/empty, auto-calculate pay = miles * cpm
+        if self.driver_mode == 'COMPANY' and self.cpm_rate and self.miles_total:
+            if not self.payout or self.payout == Decimal('0.00'):
+                self.payout = round(self.miles_total * self.cpm_rate, 2)
+
         # Auto-fill loaded miles if omitted
         if not self.loaded_miles and self.miles_total:
             self.loaded_miles = max(Decimal('0.0'), self.miles_total - (self.deadhead_miles or Decimal('0.0')))
+            
         super().save(*args, **kwargs)
 
     def __str__(self):

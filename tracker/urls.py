@@ -7,4 +7,6 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('log/', views.trip_log_view, name='trip_log'),
+    path('log/edit/<int:trip_id>/', views.trip_log_view, name='trip_log_edit'),
+    path('customer-check/', views.customer_warning_check, name='customer_check'),
 ]

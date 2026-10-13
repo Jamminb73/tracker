@@ -466,9 +466,9 @@
                     <input type="time" id="pickup_departure" name="pickup_departure" value="{{ active_trip.pickup_departure|time:'H:i'|default:'' }}">
                 </div>
 
-                <!-- Multiple Fuel Stops (Owner-Op Only) -->
-                <div class="section-title mode-owner-only">Fuel Stops</div>
-                <div class="fuel-stops-wrap mode-owner-only" id="fuelStopsContainer">
+                <!-- Multiple Fuel Stops (Available in both modes) -->
+                <div class="section-title">Fuel Stops</div>
+                <div class="fuel-stops-wrap" id="fuelStopsContainer">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 12px; font-weight: 700; color: #cbd5e1;">Diesel Stops</span>
                         <button type="button" class="btn-add-fuel" onclick="addFuelStop()">+ Add Fuel Stop</button>
@@ -510,9 +510,9 @@
                     {% endif %}
                 </div>
 
-                <!-- Multiple DEF Stops (Owner-Op Only) -->
-                <div class="section-title mode-owner-only">DEF Stops</div>
-                <div class="fuel-stops-wrap mode-owner-only" id="defStopsContainer">
+                <!-- Multiple DEF Stops (Available in both modes) -->
+                <div class="section-title">DEF Stops</div>
+                <div class="fuel-stops-wrap" id="defStopsContainer">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 12px; font-weight: 700; color: #cbd5e1;">DEF Purchases</span>
                         <button type="button" class="btn-add-fuel" onclick="addDefStop()">+ Add DEF Stop</button>
@@ -530,9 +530,9 @@
                     </div>
                 </div>
 
-                <!-- Multiple Reefer Stops (Owner-Op Only) -->
-                <div class="section-title mode-owner-only">Reefer Fuel Stops</div>
-                <div class="fuel-stops-wrap mode-owner-only" id="reeferStopsContainer">
+                <!-- Multiple Reefer Stops (Available in both modes) -->
+                <div class="section-title">Reefer Fuel Stops</div>
+                <div class="fuel-stops-wrap" id="reeferStopsContainer">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 12px; font-weight: 700; color: #cbd5e1;">Reefer Unit Fill-Ups</span>
                         <button type="button" class="btn-add-fuel" onclick="addReeferStop()">+ Add Reefer Stop</button>
@@ -652,14 +652,58 @@
             </form>
         </div>
 
+        <!-- Date Span & Performance Summary Card -->
+        <div class="card" style="padding: 20px 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #334155; padding-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span style="font-size: 13px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Date Window:</span>
+                    <button type="button" class="mode-btn active" id="btnPreset7" onclick="applyDatePreset(7, this)">Last 7 Days</button>
+                    <button type="button" class="mode-btn" id="btnPreset14" onclick="applyDatePreset(14, this)">Last 14 Days</button>
+                    <button type="button" class="mode-btn" id="btnPreset30" onclick="applyDatePreset(30, this)">Last 30 Days</button>
+                    <button type="button" class="mode-btn" id="btnPresetAll" onclick="applyDatePreset('all', this)">All Time</button>
+                </div>
+
+                <!-- Custom Pickers -->
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <label for="dateRangeStart" style="font-size: 12px; margin-bottom: 0;">From:</label>
+                    <input type="date" id="dateRangeStart" style="padding: 6px 10px; font-size: 13px;" onchange="filterByDateRange()">
+                    <label for="dateRangeEnd" style="font-size: 12px; margin-bottom: 0;">To:</label>
+                    <input type="date" id="dateRangeEnd" style="padding: 6px 10px; font-size: 13px;" onchange="filterByDateRange()">
+                </div>
+            </div>
+
+            <!-- Live Performance Metric Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-top: 16px;">
+                <div style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 14px;">
+                    <span style="font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 600; letter-spacing: 0.04em;">Gross Payout</span>
+                    <div id="statGrossPay" style="font-size: 22px; font-weight: 800; color: #38bdf8; margin-top: 4px;">$0.00</div>
+                </div>
+
+                <div style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 14px;">
+                    <span style="font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 600; letter-spacing: 0.04em;">Total Miles</span>
+                    <div id="statTotalMiles" style="font-size: 22px; font-weight: 800; color: #f8fafc; margin-top: 4px;">0.0 mi</div>
+                </div>
+
+                <div style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 14px;">
+                    <span style="font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 600; letter-spacing: 0.04em;">Fuel &amp; Expenses</span>
+                    <div id="statTotalExpenses" style="font-size: 22px; font-weight: 800; color: #f87171; margin-top: 4px;">$0.00</div>
+                </div>
+
+                <div style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 14px;">
+                    <span style="font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 600; letter-spacing: 0.04em;">Estimated Net</span>
+                    <div id="statNetProfit" style="font-size: 22px; font-weight: 800; color: #34d399; margin-top: 4px;">$0.00</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Recent Activity Table -->
         <div class="card">
             <div class="card-header">
                 <div>
                     <h2>Recent Run History &amp; Bids</h2>
-                    <p style="color: #94a3b8; font-size: 13px;">Filtered by Customer Name or Notes</p>
+                    <p style="color: #94a3b8; font-size: 13px;">Filtered by Date Window, Customer Name, or Notes</p>
                 </div>
-                <input type="text" id="tableFilter" class="search-box" placeholder="Search Customer or Notes..." onkeyup="filterRunHistory()">
+                <input type="text" id="tableFilter" class="search-box" placeholder="Search Customer or Notes..." onkeyup="filterByDateRange()">
             </div>
             <div class="table-responsive">
                 <table id="historyTable">
@@ -694,7 +738,17 @@
                     </thead>
                     <tbody>
                         {% for trip in trips %}
-                        <tr>
+                        <tr class="trip-row"
+                            data-pickup-date="{{ trip.pickup_date|date:'Y-m-d'|default:'' }}"
+                            data-delivery-date="{{ trip.destination_date|date:'Y-m-d'|default:'' }}"
+                            data-pay="{{ trip.payout|default:'0' }}"
+                            data-surcharge="{{ trip.fuel_surcharge|default:'0' }}"
+                            data-miles="{{ trip.miles_total|default:'0' }}"
+                            data-fuel="{{ trip.total_fuel_cost|default:'0' }}"
+                            data-def="{{ trip.def_cost|default:'0' }}"
+                            data-reefer="{{ trip.reefer_cost|default:'0' }}"
+                            data-cat="{{ trip.cat_scale|default:'0' }}"
+                            data-incidental="{{ trip.incidentals|default:'0' }}">
                             <td>
                                 <a href="{% url 'trip_log_edit' trip.id %}" class="btn-edit-action">
                                     ✏️ Edit
@@ -739,7 +793,7 @@
                             <td class="col-notes">{{ trip.notes|default:"--" }}</td>
                         </tr>
                         {% empty %}
-                        <tr>
+                        <tr id="emptyRow">
                             <td colspan="25" style="text-align: center; color: #64748b; padding: 24px;">No trips recorded yet.</td>
                         </tr>
                         {% endfor %}
@@ -821,7 +875,7 @@
             row.className = 'fuel-row reefer-row';
             row.innerHTML = ''
                 + '<div class="form-group" style="grid-column: span 2;">'
-                + '    <input type="text" name="reefer_location[]" placeholder="e.g. Flying J Reefer">'
+                + '    <input type="text" name="reefer_location[]" placeholder="e.g. TA Reefer Island">'
                 + '</div>'
                 + '<div class="form-group">'
                 + '    <input type="number" step="0.01" name="reefer_cost_entry[]" class="reefer-cost-input" placeholder="0.00" oninput="calculateLiveTotals()">'
@@ -918,7 +972,6 @@
                 + '</svg>';
         }
 
-        // Render soft blue and slate grey semi-trailer SVGs for community feedback cards
         function renderTrailerRating(score) {
             const activeColor = '#38bdf8';
             const inactiveColor = '#334155';
@@ -966,13 +1019,126 @@
             }
         }
 
+        // Date Span Picker & Performance Summary Filter Logic
+        function applyDatePreset(days, btnElement) {
+            document.querySelectorAll('#btnPreset7, #btnPreset14, #btnPreset30, #btnPresetAll').forEach(b => b.classList.remove('active'));
+            if (btnElement) btnElement.classList.add('active');
+
+            const startInput = document.getElementById('dateRangeStart');
+            const endInput = document.getElementById('dateRangeEnd');
+
+            if (days === 'all') {
+                startInput.value = '';
+                endInput.value = '';
+                filterByDateRange();
+                return;
+            }
+
+            const today = new Date();
+            const past = new Date();
+            past.setDate(today.getDate() - parseInt(days));
+
+            const formatDate = (d) => {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            startInput.value = formatDate(past);
+            endInput.value = formatDate(today);
+
+            filterByDateRange();
+        }
+
+        function filterByDateRange() {
+            const startVal = document.getElementById('dateRangeStart').value;
+            const endVal = document.getElementById('dateRangeEnd').value;
+            const textFilter = (document.getElementById('tableFilter').value || '').toLowerCase().trim();
+
+            const startDate = startVal ? new Date(startVal + 'T00:00:00') : null;
+            const endDate = endVal ? new Date(endVal + 'T23:59:59') : null;
+
+            let grossSum = 0;
+            let milesSum = 0;
+            let expenseSum = 0;
+            let netSum = 0;
+            let visibleCount = 0;
+
+            const rows = document.querySelectorAll('.trip-row');
+
+            rows.forEach(row => {
+                const dateStr = row.dataset.deliveryDate || row.dataset.pickupDate;
+                let matchesDate = true;
+
+                if (dateStr) {
+                    const rowDate = new Date(dateStr + 'T12:00:00');
+                    if (startDate && rowDate < startDate) matchesDate = false;
+                    if (endDate && rowDate > endDate) matchesDate = false;
+                } else if (startDate || endDate) {
+                    matchesDate = false;
+                }
+
+                // Check text query filter
+                let matchesText = true;
+                if (textFilter.length > 0) {
+                    const customerEl = row.querySelector('.col-customer');
+                    const notesEl = row.querySelector('.col-notes');
+                    const customerText = customerEl ? customerEl.textContent.toLowerCase() : '';
+                    const notesText = notesEl ? notesEl.textContent.toLowerCase() : '';
+                    matchesText = customerText.includes(textFilter) || notesText.includes(textFilter);
+                }
+
+                if (matchesDate && matchesText) {
+                    row.style.display = '';
+                    visibleCount++;
+
+                    const pay = parseFloat(row.dataset.pay) || 0;
+                    const surcharge = parseFloat(row.dataset.surcharge) || 0;
+                    const miles = parseFloat(row.dataset.miles) || 0;
+                    const fuel = parseFloat(row.dataset.fuel) || 0;
+                    const defCost = parseFloat(row.dataset.def) || 0;
+                    const reefer = parseFloat(row.dataset.reefer) || 0;
+                    const cat = parseFloat(row.dataset.cat) || 0;
+                    const incidentals = parseFloat(row.dataset.incidental) || 0;
+
+                    const totalRevenue = pay + surcharge;
+                    const totalExpenses = fuel + defCost + reefer + cat + incidentals;
+
+                    grossSum += totalRevenue;
+                    milesSum += miles;
+                    expenseSum += totalExpenses;
+                    netSum += (totalRevenue - totalExpenses);
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Update Summary KPI Cards
+            document.getElementById('statGrossPay').textContent = '$' + grossSum.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('statTotalMiles').textContent = milesSum.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' mi';
+            document.getElementById('statTotalExpenses').textContent = '$' + expenseSum.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            const netEl = document.getElementById('statNetProfit');
+            netEl.textContent = (netSum < 0 ? '-$' : '$') + Math.abs(netSum).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            netEl.style.color = netSum >= 0 ? '#34d399' : '#f87171';
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             updatePickerDisplay(5);
-            // Initialize mode toggle and recalculate metrics
             switchMode(currentMode);
             calculateLiveTotals();
+
+            // Default summary filter window to Last 7 Days
+            const defaultBtn = document.getElementById('btnPreset7');
+            if (defaultBtn) {
+                applyDatePreset(7, defaultBtn);
+            } else {
+                filterByDateRange();
+            }
         });
 
+        // Customer warning & review lookup debounce
         const customerInput = document.getElementById('customer_name');
         const warningBanner = document.getElementById('customer-warning-banner');
         const personalBlock = document.getElementById('personal-warning-block');
@@ -1039,26 +1205,6 @@
                     .catch(function(err) { console.error('Error fetching customer warning:', err); });
             }, 350);
         });
-
-        function filterRunHistory() {
-            const query = document.getElementById('tableFilter').value.toLowerCase();
-            const rows = document.querySelectorAll('#historyTable tbody tr');
-
-            rows.forEach(function(row) {
-                const customerEl = row.querySelector('.col-customer');
-                const notesEl = row.querySelector('.col-notes');
-                if (!customerEl || !notesEl) return;
-
-                const customer = customerEl.textContent.toLowerCase();
-                const notes = notesEl.textContent.toLowerCase();
-
-                if (customer.includes(query) || notes.includes(query)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-        }
     </script>
 </body>
 </html>

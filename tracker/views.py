@@ -197,6 +197,7 @@ def trip_log_view(request, trip_id=None):
 
         cpm_rate = _parse_decimal(request.POST.get('cpm_rate'), default=None)
 
+        # Revenue & Mode Calculations
         if driver_mode == 'COMPANY':
             posted_pay = _parse_decimal(request.POST.get('payout'), default=None)
             if posted_pay is not None and posted_pay > Decimal('0.00'):
@@ -207,30 +208,26 @@ def trip_log_view(request, trip_id=None):
                 payout = Decimal('0.00')
 
             fuel_surcharge = Decimal('0.00')
-            def_cost = Decimal('0.00')
-            reefer_cost = Decimal('0.00')
             cat_scale = Decimal('0.00')
             incidentals = Decimal('0.00')
         else:
             payout = _parse_decimal(request.POST.get('payout'), default='0.00')
             fuel_surcharge = _parse_decimal(request.POST.get('fuel_surcharge'), default='0.00')
-
-            # Aggregate multiple DEF purchase entries
-            def_entries = request.POST.getlist('def_cost_entry[]')
-            if def_entries:
-                def_cost = sum(_parse_decimal(c, default='0.00') for c in def_entries)
-            else:
-                def_cost = _parse_decimal(request.POST.get('def_cost'), default='0.00')
-
-            # Aggregate multiple Reefer fuel entries
-            reefer_entries = request.POST.getlist('reefer_cost_entry[]')
-            if reefer_entries:
-                reefer_cost = sum(_parse_decimal(r, default='0.00') for r in reefer_entries)
-            else:
-                reefer_cost = _parse_decimal(request.POST.get('reefer_cost'), default='0.00')
-
             cat_scale = _parse_decimal(request.POST.get('cat_scale'), default='0.00')
             incidentals = _parse_decimal(request.POST.get('incidentals'), default='0.00')
+
+        # Always aggregate DEF & Reefer regardless of driver mode
+        def_entries = request.POST.getlist('def_cost_entry[]')
+        if def_entries:
+            def_cost = sum(_parse_decimal(c, default='0.00') for c in def_entries)
+        else:
+            def_cost = _parse_decimal(request.POST.get('def_cost'), default='0.00')
+
+        reefer_entries = request.POST.getlist('reefer_cost_entry[]')
+        if reefer_entries:
+            reefer_cost = sum(_parse_decimal(r, default='0.00') for r in reefer_entries)
+        else:
+            reefer_cost = _parse_decimal(request.POST.get('reefer_cost'), default='0.00')
 
         # Origin & Pickup
         origin_city = request.POST.get('origin_city', '').strip()
@@ -285,26 +282,23 @@ def trip_log_view(request, trip_id=None):
         trip.status = status
         trip.save()
 
-        # Sync Fuel Stops (for Owner-Operators)
-        if driver_mode != 'COMPANY':
-            trip.fuel_stops.all().delete()
-            locations = request.POST.getlist('stop_location[]') or request.POST.getlist('fuel_location[]')
-            gallons_list = request.POST.getlist('fuel_gallons[]')
-            prices_list = request.POST.getlist('fuel_price[]')
+        # Sync Fuel Stops for all driver modes (keeps diesel history for both Company and Owner-Op)
+        trip.fuel_stops.all().delete()
+        locations = request.POST.getlist('stop_location[]') or request.POST.getlist('fuel_location[]')
+        gallons_list = request.POST.getlist('fuel_gallons[]')
+        prices_list = request.POST.getlist('fuel_price[]')
 
-            for loc, gal, price in zip(locations, gallons_list, prices_list):
-                if gal and price:
-                    try:
-                        FuelStop.objects.create(
-                            trip=trip,
-                            stop_location=loc.strip(),
-                            gallons=Decimal(str(gal).strip()),
-                            price_per_gallon=Decimal(str(price).strip())
-                        )
-                    except (InvalidOperation, ValueError, TypeError):
-                        pass
-        else:
-            trip.fuel_stops.all().delete()
+        for loc, gal, price in zip(locations, gallons_list, prices_list):
+            if gal and price:
+                try:
+                    FuelStop.objects.create(
+                        trip=trip,
+                        stop_location=loc.strip(),
+                        gallons=Decimal(str(gal).strip()),
+                        price_per_gallon=Decimal(str(price).strip())
+                    )
+                except (InvalidOperation, ValueError, TypeError):
+                    pass
 
         # Optional: Save/Update shared community review
         if request.POST.get('share_review') and customer_name and notes:
@@ -347,7 +341,7 @@ def trip_log_view(request, trip_id=None):
         fallback_trips = actual_trips[:7]
         miles_this_week = sum(t.miles_total or Decimal('0.0') for t in fallback_trips)
 
-    # 2. Avg fuel efficiency
+    # 2. Avg fuel efficiency (counts all delivered/in-transit trips with fuel recorded)
     total_lifetime_miles = actual_trips.aggregate(Sum('miles_total'))['miles_total__sum'] or Decimal('0.0')
     total_stop_gallons = FuelStop.objects.filter(
         trip__driver=request.user,

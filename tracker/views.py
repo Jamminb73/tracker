@@ -167,20 +167,12 @@ def trip_log_view(request, trip_id=None):
     active_trip = None
     if trip_id:
         active_trip = get_object_or_404(Trip, id=trip_id, driver=request.user)
-        # Prevent editing if already locked (Delivered / Settled)
-        if hasattr(active_trip, 'is_editable') and not active_trip.is_editable:
-            messages.warning(request, f"Trip #{active_trip.trip_number or active_trip.id} is finalized and locked.")
-            return redirect('trip_log')
 
     if request.method == 'POST':
         # Check if an existing trip ID came through hidden input or URL
         post_trip_id = request.POST.get('trip_id') or trip_id
         if post_trip_id:
             trip = get_object_or_404(Trip, id=post_trip_id, driver=request.user)
-            # Guard against tampering
-            if hasattr(trip, 'is_editable') and not trip.is_editable:
-                messages.error(request, "This trip has already been completed and locked.")
-                return redirect('trip_log')
         else:
             trip = Trip(driver=request.user)
 
@@ -222,8 +214,21 @@ def trip_log_view(request, trip_id=None):
         else:
             payout = _parse_decimal(request.POST.get('payout'), default='0.00')
             fuel_surcharge = _parse_decimal(request.POST.get('fuel_surcharge'), default='0.00')
-            def_cost = _parse_decimal(request.POST.get('def_cost'), default='0.00')
-            reefer_cost = _parse_decimal(request.POST.get('reefer_cost'), default='0.00')
+
+            # Aggregate multiple DEF purchase entries
+            def_entries = request.POST.getlist('def_cost_entry[]')
+            if def_entries:
+                def_cost = sum(_parse_decimal(c, default='0.00') for c in def_entries)
+            else:
+                def_cost = _parse_decimal(request.POST.get('def_cost'), default='0.00')
+
+            # Aggregate multiple Reefer fuel entries
+            reefer_entries = request.POST.getlist('reefer_cost_entry[]')
+            if reefer_entries:
+                reefer_cost = sum(_parse_decimal(r, default='0.00') for r in reefer_entries)
+            else:
+                reefer_cost = _parse_decimal(request.POST.get('reefer_cost'), default='0.00')
+
             cat_scale = _parse_decimal(request.POST.get('cat_scale'), default='0.00')
             incidentals = _parse_decimal(request.POST.get('incidentals'), default='0.00')
 
@@ -244,7 +249,6 @@ def trip_log_view(request, trip_id=None):
         notes = request.POST.get('notes', '').strip()
 
         # Status transition by submit button clicked:
-        # Check both name="<button_name>" and name="action" value="<button_name>"
         action = request.POST.get('action', '')
         if 'plan_mission' in request.POST or action in ['plan_mission', 'quote']:
             status = 'Quote / Planner'

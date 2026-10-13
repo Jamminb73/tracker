@@ -469,9 +469,13 @@
                 <!-- Multiple Fuel Stops (Owner-Op Only) -->
                 <div class="section-title mode-owner-only">Fuel Stops</div>
                 <div class="fuel-stops-wrap mode-owner-only" id="fuelStopsContainer">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 12px; font-weight: 700; color: #cbd5e1;">Diesel Stops</span>
+                        <button type="button" class="btn-add-fuel" onclick="addFuelStop()">+ Add Fuel Stop</button>
+                    </div>
                     {% if active_trip and active_trip.fuel_stops.all %}
                         {% for stop in active_trip.fuel_stops.all %}
-                        <div class="fuel-row">
+                        <div class="fuel-row fuel-line-row">
                             <div class="form-group">
                                 <label>Location / Stop</label>
                                 <input type="text" name="stop_location[]" value="{{ stop.stop_location }}" placeholder="e.g. Loves #412">
@@ -484,11 +488,11 @@
                                 <label>Price / Gallon</label>
                                 <input type="number" step="0.001" name="fuel_price[]" class="fuel-ppg-input" value="{{ stop.price_per_gallon }}" placeholder="0.000" oninput="calculateLiveTotals()">
                             </div>
-                            <button type="button" class="btn-remove-fuel" onclick="removeFuelStop(this)">&times;</button>
+                            <button type="button" class="btn-remove-fuel" onclick="removeExpenseRow(this, '.fuel-line-row')">&times;</button>
                         </div>
                         {% endfor %}
                     {% else %}
-                        <div class="fuel-row">
+                        <div class="fuel-row fuel-line-row">
                             <div class="form-group">
                                 <label>Location / Stop</label>
                                 <input type="text" name="stop_location[]" placeholder="e.g. Loves #412">
@@ -501,24 +505,53 @@
                                 <label>Price / Gallon</label>
                                 <input type="number" step="0.001" name="fuel_price[]" class="fuel-ppg-input" placeholder="0.000" oninput="calculateLiveTotals()">
                             </div>
-                            <button type="button" class="btn-remove-fuel" onclick="removeFuelStop(this)">&times;</button>
+                            <button type="button" class="btn-remove-fuel" onclick="removeExpenseRow(this, '.fuel-line-row')">&times;</button>
                         </div>
                     {% endif %}
-                    <button type="button" class="btn-add-fuel" onclick="addFuelStop()">+ Add Fuel Stop</button>
                 </div>
 
-                <!-- Surcharge Deductions & Incidentals (Owner-Op Only) -->
-                <div class="section-title mode-owner-only">Expenses &amp; Running Total</div>
-
-                <div class="form-group mode-owner-only">
-                    <label for="def_cost">DEF ($)</label>
-                    <input type="number" step="0.01" id="def_cost" name="def_cost" value="{{ active_trip.def_cost|default:'0.00' }}" placeholder="0.00" oninput="calculateLiveTotals()">
+                <!-- Multiple DEF Stops (Owner-Op Only) -->
+                <div class="section-title mode-owner-only">DEF Stops</div>
+                <div class="fuel-stops-wrap mode-owner-only" id="defStopsContainer">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 12px; font-weight: 700; color: #cbd5e1;">DEF Purchases</span>
+                        <button type="button" class="btn-add-fuel" onclick="addDefStop()">+ Add DEF Stop</button>
+                    </div>
+                    <div class="fuel-row def-row">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label>Location / Notes</label>
+                            <input type="text" name="def_location[]" placeholder="e.g. Loves #412 DEF">
+                        </div>
+                        <div class="form-group">
+                            <label>Total Cost ($)</label>
+                            <input type="number" step="0.01" name="def_cost_entry[]" class="def-cost-input" value="{{ active_trip.def_cost|default:'' }}" placeholder="0.00" oninput="calculateLiveTotals()">
+                        </div>
+                        <button type="button" class="btn-remove-fuel" onclick="removeExpenseRow(this, '.def-row')">&times;</button>
+                    </div>
                 </div>
 
-                <div class="form-group mode-owner-only">
-                    <label for="reefer_cost">Reefer ($)</label>
-                    <input type="number" step="0.01" id="reefer_cost" name="reefer_cost" value="{{ active_trip.reefer_cost|default:'0.00' }}" oninput="calculateLiveTotals()">
+                <!-- Multiple Reefer Stops (Owner-Op Only) -->
+                <div class="section-title mode-owner-only">Reefer Fuel Stops</div>
+                <div class="fuel-stops-wrap mode-owner-only" id="reeferStopsContainer">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 12px; font-weight: 700; color: #cbd5e1;">Reefer Unit Fill-Ups</span>
+                        <button type="button" class="btn-add-fuel" onclick="addReeferStop()">+ Add Reefer Stop</button>
+                    </div>
+                    <div class="fuel-row reefer-row">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label>Location / Notes</label>
+                            <input type="text" name="reefer_location[]" placeholder="e.g. TA Reefer Island">
+                        </div>
+                        <div class="form-group">
+                            <label>Total Cost ($)</label>
+                            <input type="number" step="0.01" name="reefer_cost_entry[]" class="reefer-cost-input" value="{{ active_trip.reefer_cost|default:'' }}" placeholder="0.00" oninput="calculateLiveTotals()">
+                        </div>
+                        <button type="button" class="btn-remove-fuel" onclick="removeExpenseRow(this, '.reefer-row')">&times;</button>
+                    </div>
                 </div>
+
+                <!-- Incidentals & Running Total (Owner-Op Only) -->
+                <div class="section-title mode-owner-only">Incidentals &amp; Running Total</div>
 
                 <div class="form-group mode-owner-only">
                     <label for="cat_scale">CAT Scale ($)</label>
@@ -663,12 +696,11 @@
                         {% for trip in trips %}
                         <tr>
                             <td>
-                                {% if trip.status != 'Delivered' and trip.status != 'Settled' %}
-                                    <a href="{% url 'trip_log_edit' trip.id %}" class="btn-edit-action">
-                                        ✏️ Edit
-                                    </a>
-                                {% else %}
-                                    <span class="locked-badge">🔒 Locked</span>
+                                <a href="{% url 'trip_log_edit' trip.id %}" class="btn-edit-action">
+                                    ✏️ Edit
+                                </a>
+                                {% if trip.status == 'Delivered' or trip.status == 'Settled' %}
+                                    <span class="locked-badge" style="display:block; font-size:10px; margin-top:2px;">(Delivered)</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -753,7 +785,7 @@
         function addFuelStop() {
             const container = document.getElementById('fuelStopsContainer');
             const row = document.createElement('div');
-            row.className = 'fuel-row';
+            row.className = 'fuel-row fuel-line-row';
             row.innerHTML = ''
                 + '<div class="form-group">'
                 + '    <input type="text" name="stop_location[]" placeholder="e.g. Pilot #102">'
@@ -764,19 +796,48 @@
                 + '<div class="form-group">'
                 + '    <input type="number" step="0.001" name="fuel_price[]" class="fuel-ppg-input" placeholder="0.000" oninput="calculateLiveTotals()">'
                 + '</div>'
-                + '<button type="button" class="btn-remove-fuel" onclick="removeFuelStop(this)">&times;</button>';
-            container.insertBefore(row, container.lastElementChild);
+                + '<button type="button" class="btn-remove-fuel" onclick="removeExpenseRow(this, \'.fuel-line-row\')">&times;</button>';
+            container.appendChild(row);
         }
 
-        function removeFuelStop(button) {
-            const rows = document.querySelectorAll('.fuel-row');
+        function addDefStop() {
+            const container = document.getElementById('defStopsContainer');
+            const row = document.createElement('div');
+            row.className = 'fuel-row def-row';
+            row.innerHTML = ''
+                + '<div class="form-group" style="grid-column: span 2;">'
+                + '    <input type="text" name="def_location[]" placeholder="e.g. Pilot DEF">'
+                + '</div>'
+                + '<div class="form-group">'
+                + '    <input type="number" step="0.01" name="def_cost_entry[]" class="def-cost-input" placeholder="0.00" oninput="calculateLiveTotals()">'
+                + '</div>'
+                + '<button type="button" class="btn-remove-fuel" onclick="removeExpenseRow(this, \'.def-row\')">&times;</button>';
+            container.appendChild(row);
+        }
+
+        function addReeferStop() {
+            const container = document.getElementById('reeferStopsContainer');
+            const row = document.createElement('div');
+            row.className = 'fuel-row reefer-row';
+            row.innerHTML = ''
+                + '<div class="form-group" style="grid-column: span 2;">'
+                + '    <input type="text" name="reefer_location[]" placeholder="e.g. Flying J Reefer">'
+                + '</div>'
+                + '<div class="form-group">'
+                + '    <input type="number" step="0.01" name="reefer_cost_entry[]" class="reefer-cost-input" placeholder="0.00" oninput="calculateLiveTotals()">'
+                + '</div>'
+                + '<button type="button" class="btn-remove-fuel" onclick="removeExpenseRow(this, \'.reefer-row\')">&times;</button>';
+            container.appendChild(row);
+        }
+
+        function removeExpenseRow(button, rowSelector) {
+            const rows = document.querySelectorAll(rowSelector);
             if (rows.length > 1) {
                 button.parentElement.remove();
-                calculateLiveTotals();
             } else {
                 button.parentElement.querySelectorAll('input').forEach(input => input.value = '');
-                calculateLiveTotals();
             }
+            calculateLiveTotals();
         }
 
         function calculateLiveTotals() {
@@ -795,8 +856,17 @@
             const loadedMiles = parseFloat(document.getElementById('loaded_miles').value) || 0;
             const deadheadMiles = parseFloat(document.getElementById('deadhead_miles').value) || 0;
             
-            const defCost = parseFloat(document.getElementById('def_cost').value) || 0;
-            const reefer = parseFloat(document.getElementById('reefer_cost').value) || 0;
+            // Multiple DEF & Reefer total sums
+            let defCost = 0;
+            document.querySelectorAll('.def-cost-input').forEach(input => {
+                defCost += parseFloat(input.value) || 0;
+            });
+
+            let reefer = 0;
+            document.querySelectorAll('.reefer-cost-input').forEach(input => {
+                reefer += parseFloat(input.value) || 0;
+            });
+
             const catScale = parseFloat(document.getElementById('cat_scale').value) || 0;
             const incidentals = parseFloat(document.getElementById('incidentals').value) || 0;
 

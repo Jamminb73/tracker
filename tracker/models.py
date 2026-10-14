@@ -101,36 +101,63 @@ class Trip(models.Model):
     loaded_miles = models.DecimalField(max_digits=8, decimal_places=1, null=True, blank=True, verbose_name="Loaded Miles (Optional)")
     deadhead_miles = models.DecimalField(max_digits=8, decimal_places=1, default=Decimal('0.0'), blank=True, verbose_name="Deadhead Miles (Optional)")
 
-    # Origin & Pickup
+    # Origin & Pickup (Shipper)
     origin_city = models.CharField(max_length=100)
+    pickup_facility = models.CharField(max_length=150, blank=True, db_index=True, verbose_name="Shipper / Pickup Facility")
     pickup_date = models.DateField(null=True, blank=True)
     pickup_arrival = models.TimeField(null=True, blank=True)
     pickup_departure = models.TimeField(null=True, blank=True)
+    pickup_notes = models.TextField(blank=True, verbose_name="Pickup / Shipper Notes")
 
     # Legacy / Single Quick-Log Fuel (fallback if not using multi-line fuel stops)
-    fuel_gallons = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
-    fuel_cost = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, verbose_name="Price Per Gallon")
+    fuel_gallons = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
+    fuel_cost = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True, verbose_name="Price Per Gallon")
 
     # Surcharge deductions & trip expenses
     def_cost = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0.00'), verbose_name="DEF")
     reefer_cost = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0.00'), verbose_name="Reefer")
     cat_scale = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0.00'), verbose_name="CAT Scale")
+    tolls = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0.00'), verbose_name="Tolls ($)")
     incidentals = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0.00'))
 
-    # Destination & Delivery
+    # Destination & Delivery (Receiver)
     destination_city = models.CharField(max_length=100)
+    destination_facility = models.CharField(max_length=150, blank=True, db_index=True, verbose_name="Receiver / Delivery Facility")
     destination_date = models.DateField(null=True, blank=True, verbose_name="Delivery Date")
     destination_arrival = models.TimeField(null=True, blank=True)
     destination_departure = models.TimeField(null=True, blank=True)
-
-    # Customer & Private Driver Notes
-    customer_name = models.CharField(max_length=150, blank=True, db_index=True)
-    notes = models.TextField(blank=True)
+    delivery_notes = models.TextField(blank=True, verbose_name="Delivery / Receiver Notes")
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-pickup_date', '-created_at']
+
+    # --- Backwards Compatibility Bridge ---
+    @property
+    def customer_name(self):
+        """Returns receiver facility, pickup facility, or empty string."""
+        if self.destination_facility and self.pickup_facility:
+            return f"{self.pickup_facility} -> {self.destination_facility}"
+        return self.destination_facility or self.pickup_facility or ""
+
+    @customer_name.setter
+    def customer_name(self, value):
+        self.destination_facility = value
+
+    @property
+    def notes(self):
+        """Combines pickup and delivery notes if both exist."""
+        notes = []
+        if self.pickup_notes:
+            notes.append(f"[Pickup]: {self.pickup_notes}")
+        if self.delivery_notes:
+            notes.append(f"[Drop]: {self.delivery_notes}")
+        return " | ".join(notes)
+
+    @notes.setter
+    def notes(self, value):
+        self.delivery_notes = value
 
     # --- Core Mileage & Revenue Calculations ---
     @property
@@ -166,7 +193,7 @@ class Trip(models.Model):
 
     @property
     def running_total(self):
-        """Zach's Formula: Fuel Surcharge - LT (Fuel Total) - DEF - Reefer - CAT Scale."""
+        """Zach's Formula: Fuel Surcharge - LT (Fuel Total) - DEF - Reefer - CAT Scale - Tolls."""
         if self.driver_mode == 'COMPANY':
             return Decimal('0.00')
         return (
@@ -175,6 +202,7 @@ class Trip(models.Model):
             - (self.def_cost or Decimal('0.00'))
             - (self.reefer_cost or Decimal('0.00'))
             - (self.cat_scale or Decimal('0.00'))
+            - (self.tolls or Decimal('0.00'))
         )
 
     # --- Mission Planner / Risk vs. Reward Metrics ---
@@ -188,6 +216,7 @@ class Trip(models.Model):
             + (self.def_cost or Decimal('0.00'))
             + (self.reefer_cost or Decimal('0.00'))
             + (self.cat_scale or Decimal('0.00'))
+            + (self.tolls or Decimal('0.00'))
             + (self.incidentals or Decimal('0.00'))
         )
 
@@ -221,14 +250,16 @@ class Trip(models.Model):
 
     def __str__(self):
         label = self.bol_number or self.trip_number or 'Trip'
-        return f"{label} ({self.origin_city} -> {self.destination_city})"
+        origin = f"{self.pickup_facility} ({self.origin_city})" if self.pickup_facility else self.origin_city
+        destination = f"{self.destination_facility} ({self.destination_city})" if self.destination_facility else self.destination_city
+        return f"{label} [{origin} -> {destination}]"
 
 
 class FuelStop(models.Model):
     """Sub-table to support multiple fuel lines per trip."""
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='fuel_stops')
     stop_location = models.CharField(max_length=100, blank=True)
-    gallons = models.DecimalField(max_digits=7, decimal_places=2, default=Decimal('0.00'))
+    gallons = models.DecimalField(max_digits=8, decimal_places=3, default=Decimal('0.000'))
     price_per_gallon = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal('0.000'))
 
     @property
@@ -241,11 +272,18 @@ class FuelStop(models.Model):
 
 class CustomerReview(models.Model):
     """Crowdsourced shipper / receiver intel shared between drivers."""
+    FACILITY_TYPE_CHOICES = [
+        ('PICKUP', 'Shipper / Pickup Facility'),
+        ('DELIVERY', 'Receiver / Delivery Facility'),
+        ('GENERAL', 'General Facility'),
+    ]
+
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='customer_reviews')
-    customer_name = models.CharField(max_length=150, db_index=True)
+    facility_type = models.CharField(max_length=15, choices=FACILITY_TYPE_CHOICES, default='GENERAL')
+    customer_name = models.CharField(max_length=150, db_index=True, verbose_name="Facility Name")
     comment = models.TextField()
     
-    # Quick facility flags drivers care most about
+    # Facility flags
     overnight_parking = models.BooleanField(default=False, verbose_name="Overnight Parking Available")
     heavy_detention = models.BooleanField(default=False, verbose_name="Long Detention (3+ hrs)")
     rating = models.PositiveSmallIntegerField(default=5)  # 1 to 5 stars
@@ -258,4 +296,40 @@ class CustomerReview(models.Model):
     def __str__(self):
         truck = getattr(self.author.profile, 'truck_number', '') if hasattr(self.author, 'profile') else ''
         author_label = f"Rig #{truck}" if truck else self.author.username
-        return f"{self.customer_name} ({self.rating}★) by {author_label}"
+        return f"[{self.get_facility_type_display()}] {self.customer_name} ({self.rating}★) by {author_label}"
+
+
+class FeatureSuggestion(models.Model):
+    """Driver ideas and feature requests routed to Django Admin."""
+    CATEGORY_CHOICES = [
+        ('FEATURE', 'New Feature Idea'),
+        ('EXPENSE', 'New Expense / Calculation Field'),
+        ('BUG', 'Bug / Glitch Report'),
+        ('OTHER', 'General Suggestion'),
+    ]
+
+    STATUS_CHOICES = [
+        ('NEW', 'New / Under Review'),
+        ('PLANNED', 'Planned / In Roadmap'),
+        ('IN_PROGRESS', 'Currently Building'),
+        ('COMPLETED', 'Completed / Released'),
+        ('DECLINED', 'Declined'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='suggestions')
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='FEATURE')
+    title = models.CharField(max_length=150, verbose_name="Summary / Title")
+    description = models.TextField(verbose_name="Details / What would help you?")
+    
+    # Internal dev tracking
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='NEW')
+    admin_notes = models.TextField(blank=True, verbose_name="Internal Developer Notes")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        truck = getattr(self.user.profile, 'truck_number', '') if hasattr(self.user, 'profile') else ''
+        author = f"Rig #{truck}" if truck else self.user.username
+        return f"[{self.get_status_display()}] {self.title} - {author}"

@@ -33,6 +33,24 @@
         .user-tag {
             font-size: 14px;
             color: #94a3b8;
+            display: flex;
+            align-items: center;
+        }
+        .btn-suggest-nav {
+            margin-left: 12px;
+            background: rgba(2, 132, 199, 0.15);
+            border: 1px solid #0284c7;
+            color: #38bdf8;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-suggest-nav:hover {
+            background: #0284c7;
+            color: #ffffff;
         }
         .logout-link {
             color: #f87171;
@@ -268,7 +286,7 @@
             font-size: 13px;
             width: 260px;
         }
-        #customer-warning-banner {
+        .intel-warning-banner {
             display: none;
             margin-top: 8px;
             padding: 12px 14px;
@@ -279,6 +297,50 @@
             font-size: 13px;
             line-height: 1.4;
         }
+
+        /* Mobile-First Inline Intel Widget */
+        .inline-intel-card {
+            background: #151f30;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+        }
+        .intel-toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 0;
+            cursor: pointer;
+            color: #f8fafc;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .intel-options-drawer {
+            display: none;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px dashed #334155;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .chip-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #cbd5e1;
+            cursor: pointer;
+            background: #0f172a;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            user-select: none;
+        }
+
         .status-badge {
             padding: 3px 8px;
             border-radius: 4px;
@@ -351,6 +413,7 @@
         <div class="brand">RigLog // Driver Dashboard</div>
         <div class="user-tag">
             Rig #{{ user.profile.truck_number|default:"Unit 101" }} 
+            <button type="button" class="btn-suggest-nav" onclick="openSuggestionModal()">💡 Suggest Feature</button>
             <a href="{% url 'logout' %}" class="logout-link">Sign Out</a>
         </div>
     </div>
@@ -443,12 +506,17 @@
                     <input type="text" id="net_ppm" readonly placeholder="$0.00">
                 </div>
 
-                <!-- Origin Section -->
-                <div class="section-title">Origin &amp; Pickup</div>
+                <!-- Origin & Pickup Section -->
+                <div class="section-title">Origin &amp; Pickup (Shipper)</div>
 
                 <div class="form-group">
                     <label for="origin_city">Origin City</label>
                     <input type="text" id="origin_city" name="origin_city" value="{{ active_trip.origin_city|default:'' }}" placeholder="City, ST">
+                </div>
+
+                <div class="form-group">
+                    <label for="pickup_facility">Shipper / Pickup Facility Name</label>
+                    <input type="text" id="pickup_facility" name="pickup_facility" value="{{ active_trip.pickup_facility|default:'' }}" placeholder="e.g. Tyson Foods, Americold #104" autocomplete="off">
                 </div>
 
                 <div class="form-group">
@@ -466,7 +534,49 @@
                     <input type="time" id="pickup_departure" name="pickup_departure" value="{{ active_trip.pickup_departure|time:'H:i'|default:'' }}">
                 </div>
 
-                <!-- Multiple Fuel Stops (Available in both modes) -->
+                <!-- Pickup Notes & Inline Shipper Review Card -->
+                <div class="form-group full-width">
+                    <label for="pickup_notes">Shipper Notes / Gate &amp; Loading Intel</label>
+                    <textarea id="pickup_notes" name="pickup_notes" rows="2" placeholder="Guard shack procedure, stage line, pre-cool requirements, overnight parking...">{{ active_trip.pickup_notes|default:'' }}</textarea>
+                    
+                    <div id="pickup-warning-banner" class="intel-warning-banner">
+                        <div id="pickup-personal-block" style="display: none; margin-bottom: 8px; background: rgba(239, 68, 68, 0.12); border: 1px solid #ef4444; border-radius: 6px; padding: 10px;">
+                            <strong style="color: #f87171;">⚠️ Your Past Shipper Note:</strong>
+                            <div id="pickup-warning-text" style="margin-top: 4px; font-size: 13px; color: #fca5a5;"></div>
+                        </div>
+                        <div id="pickup-community-block" style="display: none; border-top: 1px solid #334155; padding-top: 8px;">
+                            <strong style="color: #38bdf8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">🚛 Community Intel (Shipper)</strong>
+                            <div id="pickup-community-list" style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Shipper Inline Intel Module -->
+                    <div class="inline-intel-card">
+                        <label class="intel-toggle-label">
+                            <input type="checkbox" name="share_pickup_review" id="share_pickup_review" style="width: 18px; height: 18px; accent-color: #38bdf8;" onchange="toggleReviewDrawer('pickupReviewDrawer', this.checked)">
+                            <span>Share this Shipper note anonymously with drivers</span>
+                        </label>
+                        
+                        <div id="pickupReviewDrawer" class="intel-options-drawer" style="display: none;">
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <label class="chip-toggle">
+                                    <input type="checkbox" name="pickup_parking" style="accent-color: #38bdf8;"> 🅿️ Overnight Parking OK
+                                </label>
+                                <label class="chip-toggle">
+                                    <input type="checkbox" name="pickup_detention" style="accent-color: #f87171;"> ⏳ Long Wait (3+ hrs)
+                                </label>
+                            </div>
+
+                            <div style="display: flex; align-items: center; gap: 8px; background: #0f172a; padding: 6px 12px; border-radius: 6px; border: 1px solid #334155;">
+                                <input type="hidden" name="pickup_rating" id="pickup_rating_input" value="5">
+                                <div id="pickup-rating-picker" style="display: flex; align-items: center; gap: 3px;"></div>
+                                <span id="pickup-rating-label" style="font-size: 12px; color: #38bdf8; font-weight: 700; min-width: 80px;">5 Trailers</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Multiple Fuel Stops -->
                 <div class="section-title">Fuel Stops</div>
                 <div class="fuel-stops-wrap" id="fuelStopsContainer">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -482,7 +592,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Fuel Gal</label>
-                                <input type="number" step="0.01" name="fuel_gallons[]" class="fuel-gal-input" value="{{ stop.gallons }}" placeholder="0.00" oninput="calculateLiveTotals()">
+                                <input type="number" step="0.001" name="fuel_gallons[]" class="fuel-gal-input" value="{{ stop.gallons }}" placeholder="0.000" oninput="calculateLiveTotals()">
                             </div>
                             <div class="form-group">
                                 <label>Price / Gallon</label>
@@ -499,7 +609,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Fuel Gal</label>
-                                <input type="number" step="0.01" name="fuel_gallons[]" class="fuel-gal-input" placeholder="0.00" oninput="calculateLiveTotals()">
+                                <input type="number" step="0.001" name="fuel_gallons[]" class="fuel-gal-input" placeholder="0.000" oninput="calculateLiveTotals()">
                             </div>
                             <div class="form-group">
                                 <label>Price / Gallon</label>
@@ -510,7 +620,7 @@
                     {% endif %}
                 </div>
 
-                <!-- Multiple DEF Stops (Available in both modes) -->
+                <!-- Multiple DEF Stops -->
                 <div class="section-title">DEF Stops</div>
                 <div class="fuel-stops-wrap" id="defStopsContainer">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -530,7 +640,7 @@
                     </div>
                 </div>
 
-                <!-- Multiple Reefer Stops (Available in both modes) -->
+                <!-- Multiple Reefer Stops -->
                 <div class="section-title">Reefer Fuel Stops</div>
                 <div class="fuel-stops-wrap" id="reeferStopsContainer">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -550,12 +660,17 @@
                     </div>
                 </div>
 
-                <!-- Incidentals & Running Total (Owner-Op Only) -->
+                <!-- Incidentals, Tolls & Running Total -->
                 <div class="section-title mode-owner-only">Incidentals &amp; Running Total</div>
 
                 <div class="form-group mode-owner-only">
                     <label for="cat_scale">CAT Scale ($)</label>
                     <input type="number" step="0.01" id="cat_scale" name="cat_scale" value="{{ active_trip.cat_scale|default:'0.00' }}" placeholder="0.00" oninput="calculateLiveTotals()">
+                </div>
+
+                <div class="form-group mode-owner-only">
+                    <label for="tolls">Tolls ($)</label>
+                    <input type="number" step="0.01" id="tolls" name="tolls" value="{{ active_trip.tolls|default:'0.00' }}" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group mode-owner-only">
@@ -568,12 +683,17 @@
                     <input type="text" id="running_total" readonly placeholder="$0.00">
                 </div>
 
-                <!-- Destination Section -->
-                <div class="section-title">Destination &amp; Delivery</div>
+                <!-- Destination & Delivery Section -->
+                <div class="section-title">Destination &amp; Delivery (Receiver)</div>
 
                 <div class="form-group">
                     <label for="destination_city">Destination City</label>
                     <input type="text" id="destination_city" name="destination_city" value="{{ active_trip.destination_city|default:'' }}" placeholder="City, ST">
+                </div>
+
+                <div class="form-group">
+                    <label for="destination_facility">Receiver / Delivery Facility Name</label>
+                    <input type="text" id="destination_facility" name="destination_facility" value="{{ active_trip.destination_facility|default:'' }}" placeholder="e.g. McLane Foodservice, Walmart DC #6022" autocomplete="off">
                 </div>
 
                 <div class="form-group">
@@ -591,59 +711,49 @@
                     <input type="time" id="destination_departure" name="destination_departure" value="{{ active_trip.destination_departure|time:'H:i'|default:'' }}">
                 </div>
 
-                <!-- Customer & Notes -->
-                <div class="section-title">Customer &amp; Notes</div>
-
+                <!-- Delivery Notes & Inline Receiver Review Card -->
                 <div class="form-group full-width">
-                    <label for="customer_name">Customer / Facility Name</label>
-                    <input type="text" id="customer_name" name="customer_name" value="{{ active_trip.customer_name|default:'' }}" placeholder="Searchable facility name" autocomplete="off">
+                    <label for="delivery_notes">Receiver Notes / Unload &amp; Lumper Intel</label>
+                    <textarea id="delivery_notes" name="delivery_notes" rows="2" placeholder="Lumper fee, gate codes, overnight parking on access road, blindside docks...">{{ active_trip.delivery_notes|default:'' }}</textarea>
                     
-                    <!-- Dynamic Warning & Community Intel Banner -->
-                    <div id="customer-warning-banner">
-                        <div id="personal-warning-block" style="display: none; margin-bottom: 10px; background: rgba(239, 68, 68, 0.12); border: 1px solid #ef4444; border-radius: 6px; padding: 10px;">
-                            <strong style="color: #f87171;">⚠️ Your Past Note:</strong>
-                            <div id="customer-warning-text" style="margin-top: 4px; font-size: 13px; color: #fca5a5;"></div>
+                    <div id="dropoff-warning-banner" class="intel-warning-banner">
+                        <div id="dropoff-personal-block" style="display: none; margin-bottom: 8px; background: rgba(239, 68, 68, 0.12); border: 1px solid #ef4444; border-radius: 6px; padding: 10px;">
+                            <strong style="color: #f87171;">⚠️ Your Past Receiver Note:</strong>
+                            <div id="dropoff-warning-text" style="margin-top: 4px; font-size: 13px; color: #fca5a5;"></div>
                         </div>
-
-                        <div id="community-reviews-block" style="display: none; border-top: 1px solid #334155; padding-top: 8px; margin-top: 8px;">
-                            <strong style="color: #38bdf8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">🚛 Community Intel (Other Drivers)</strong>
-                            <div id="community-reviews-list" style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;"></div>
+                        <div id="dropoff-community-block" style="display: none; border-top: 1px solid #334155; padding-top: 8px;">
+                            <strong style="color: #38bdf8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">🚛 Community Intel (Receiver)</strong>
+                            <div id="dropoff-community-list" style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;"></div>
                         </div>
                     </div>
-                </div>
 
-                <div class="form-group full-width">
-                    <label for="notes">Notes / Driver Intel</label>
-                    <textarea id="notes" name="notes" rows="2" placeholder="Dock info, scale notes, gate instructions...">{{ active_trip.notes|default:'' }}</textarea>
-                </div>
-
-                <!-- Community Intel Share Options -->
-                <div class="form-group full-width" style="background: #151f30; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin-top: 4px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 0; cursor: pointer; color: #f8fafc; font-size: 13px;">
-                            <input type="checkbox" name="share_review" id="share_review" style="width: 16px; height: 16px; accent-color: #38bdf8;">
-                            Share this note anonymously with other drivers
+                    <!-- Receiver Inline Intel Module -->
+                    <div class="inline-intel-card">
+                        <label class="intel-toggle-label">
+                            <input type="checkbox" name="share_delivery_review" id="share_delivery_review" style="width: 18px; height: 18px; accent-color: #38bdf8;" onchange="toggleReviewDrawer('deliveryReviewDrawer', this.checked)">
+                            <span>Share this Receiver note anonymously with drivers</span>
                         </label>
                         
-                        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #94a3b8; cursor: pointer; margin-bottom: 0;">
-                                <input type="checkbox" name="review_parking" style="accent-color: #38bdf8;"> 🅿️ Overnight Parking OK
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #94a3b8; cursor: pointer; margin-bottom: 0;">
-                                <input type="checkbox" name="review_detention" style="accent-color: #f87171;"> ⏳ Long Detention (3+ hrs)
-                            </label>
+                        <div id="deliveryReviewDrawer" class="intel-options-drawer" style="display: none;">
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <label class="chip-toggle">
+                                    <input type="checkbox" name="delivery_parking" style="accent-color: #38bdf8;"> 🅿️ Overnight Parking OK
+                                </label>
+                                <label class="chip-toggle">
+                                    <input type="checkbox" name="delivery_detention" style="accent-color: #f87171;"> ⏳ Long Wait (3+ hrs)
+                                </label>
+                            </div>
 
-                            <!-- Interactive Clickable SVG Trailer Rating -->
-                            <div style="display: flex; align-items: center; gap: 8px; background: #0f172a; padding: 4px 10px; border-radius: 6px; border: 1px solid #334155;">
-                                <input type="hidden" name="review_rating" id="review_rating_input" value="5">
-                                <div id="trailer-rating-picker" style="display: flex; align-items: center; gap: 3px;"></div>
-                                <span id="trailer-rating-label" style="font-size: 12px; color: #38bdf8; font-weight: 700; min-width: 80px;">5 Trailers</span>
+                            <div style="display: flex; align-items: center; gap: 8px; background: #0f172a; padding: 6px 12px; border-radius: 6px; border: 1px solid #334155;">
+                                <input type="hidden" name="delivery_rating" id="delivery_rating_input" value="5">
+                                <div id="delivery-rating-picker" style="display: flex; align-items: center; gap: 3px;"></div>
+                                <span id="delivery-rating-label" style="font-size: 12px; color: #38bdf8; font-weight: 700; min-width: 80px;">5 Trailers</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Actions -->
+                <!-- Action Buttons -->
                 <div class="btn-row">
                     <button type="submit" name="save_log" class="btn-save" onclick="setTripStatus('In Transit')">Save Daily Log</button>
                     <button type="submit" name="plan_mission" class="btn-plan" onclick="setTripStatus('Quote / Planner')">Save as Quote / Mission</button>
@@ -672,7 +782,7 @@
                 </div>
             </div>
 
-            <!-- Live Performance Metric Cards -->
+            <!-- Live Performance KPI Cards -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-top: 16px;">
                 <div style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 14px;">
                     <span style="font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 600; letter-spacing: 0.04em;">Gross Payout</span>
@@ -701,9 +811,9 @@
             <div class="card-header">
                 <div>
                     <h2>Recent Run History &amp; Bids</h2>
-                    <p style="color: #94a3b8; font-size: 13px;">Filtered by Date Window, Customer Name, or Notes</p>
+                    <p style="color: #94a3b8; font-size: 13px;">Filtered by Date Window, Shipper/Receiver Facilities, or Notes</p>
                 </div>
-                <input type="text" id="tableFilter" class="search-box" placeholder="Search Customer or Notes..." onkeyup="filterByDateRange()">
+                <input type="text" id="tableFilter" class="search-box" placeholder="Search facilities, cities, or notes..." onkeyup="filterByDateRange()">
             </div>
             <div class="table-responsive">
                 <table id="historyTable">
@@ -720,20 +830,23 @@
                             <th>Deadhead</th>
                             <th>Rate/Mi</th>
                             <th>Origin City</th>
+                            <th>Shipper Facility</th>
+                            <th>Pickup Notes</th>
                             <th>Arr Time</th>
                             <th>Dep Time</th>
                             <th>Fuel Total</th>
                             <th>DEF</th>
                             <th>Reefer</th>
                             <th>CAT Scale</th>
+                            <th>Tolls</th>
                             <th>Running Total</th>
                             <th>Incidentals</th>
                             <th>Dest City</th>
+                            <th>Receiver Facility</th>
+                            <th>Delivery Notes</th>
                             <th>Delivery Date</th>
                             <th>Arr Time</th>
                             <th>Dep Time</th>
-                            <th>Customer Name</th>
-                            <th>Notes</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -748,11 +861,10 @@
                             data-def="{{ trip.def_cost|default:'0' }}"
                             data-reefer="{{ trip.reefer_cost|default:'0' }}"
                             data-cat="{{ trip.cat_scale|default:'0' }}"
+                            data-tolls="{{ trip.tolls|default:'0' }}"
                             data-incidental="{{ trip.incidentals|default:'0' }}">
                             <td>
-                                <a href="{% url 'trip_log_edit' trip.id %}" class="btn-edit-action">
-                                    ✏️ Edit
-                                </a>
+                                <a href="{% url 'trip_log_edit' trip.id %}" class="btn-edit-action">✏️ Edit</a>
                                 {% if trip.status == 'Delivered' or trip.status == 'Settled' %}
                                     <span class="locked-badge" style="display:block; font-size:10px; margin-top:2px;">(Delivered)</span>
                                 {% endif %}
@@ -774,32 +886,75 @@
                             <td>{{ trip.miles_total }} mi</td>
                             <td>{{ trip.deadhead_miles|default:"0.0" }} mi</td>
                             <td>${{ trip.ppm|floatformat:2 }}</td>
-                            <td>{{ trip.origin_city }}</td>
+                            <td class="col-orig-city">{{ trip.origin_city }}</td>
+                            <td class="col-shipper"><strong>{{ trip.pickup_facility|default:"--" }}</strong></td>
+                            <td class="col-pickup-notes">{{ trip.pickup_notes|default:"--" }}</td>
                             <td>{{ trip.pickup_arrival|time:"H:i"|default:"--" }}</td>
                             <td>{{ trip.pickup_departure|time:"H:i"|default:"--" }}</td>
                             <td>${{ trip.total_fuel_cost|floatformat:2 }}</td>
                             <td>${{ trip.def_cost|floatformat:2 }}</td>
                             <td>${{ trip.reefer_cost|floatformat:2 }}</td>
                             <td>${{ trip.cat_scale|floatformat:2 }}</td>
+                            <td>${{ trip.tolls|floatformat:2 }}</td>
                             <td class="{% if trip.running_total >= 0 %}text-profit{% else %}text-loss{% endif %}">
                                 ${{ trip.running_total|floatformat:2 }}
                             </td>
                             <td>${{ trip.incidentals|floatformat:2 }}</td>
-                            <td>{{ trip.destination_city }}</td>
+                            <td class="col-dest-city">{{ trip.destination_city }}</td>
+                            <td class="col-receiver"><strong>{{ trip.destination_facility|default:"--" }}</strong></td>
+                            <td class="col-delivery-notes">{{ trip.delivery_notes|default:"--" }}</td>
                             <td>{{ trip.destination_date|date:"m/d/Y"|default:"--" }}</td>
                             <td>{{ trip.destination_arrival|time:"H:i"|default:"--" }}</td>
                             <td>{{ trip.destination_departure|time:"H:i"|default:"--" }}</td>
-                            <td class="col-customer"><strong>{{ trip.customer_name|default:"--" }}</strong></td>
-                            <td class="col-notes">{{ trip.notes|default:"--" }}</td>
                         </tr>
                         {% empty %}
                         <tr id="emptyRow">
-                            <td colspan="25" style="text-align: center; color: #64748b; padding: 24px;">No trips recorded yet.</td>
+                            <td colspan="28" style="text-align: center; color: #64748b; padding: 24px;">No trips recorded yet.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <!-- Suggestion Modal -->
+    <div id="suggestionModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 16px;">
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; max-width: 500px; width: 100%; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #334155; padding-bottom: 10px;">
+                <h3 style="color: #fff; font-size: 18px;">💡 Suggest an Improvement</h3>
+                <button type="button" onclick="closeSuggestionModal()" style="background: transparent; border: none; color: #94a3b8; font-size: 22px; cursor: pointer;">&times;</button>
+            </div>
+
+            <form id="suggestionForm" onsubmit="submitSuggestion(event)">
+                {% csrf_token %}
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">Category</label>
+                    <select id="sugCategory" style="width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff;">
+                        <option value="FEATURE">New Feature Idea</option>
+                        <option value="EXPENSE">New Expense / Calculation Field</option>
+                        <option value="BUG">Bug / Glitch Report</option>
+                        <option value="OTHER">General Suggestion</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">Summary</label>
+                    <input type="text" id="sugTitle" required placeholder="e.g. Add tracking for bridge tolls" style="width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff;">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">Details</label>
+                    <textarea id="sugDescription" rows="4" required placeholder="Tell us what you'd like to see or what would make your runs easier..." style="width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff;"></textarea>
+                </div>
+
+                <div id="sugAlert" style="display: none; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 14px;"></div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" onclick="closeSuggestionModal()" style="padding: 10px 16px; background: #334155; border: none; border-radius: 6px; color: #cbd5e1; cursor: pointer; font-weight: 600;">Cancel</button>
+                    <button type="submit" id="btnSubmitSug" style="padding: 10px 18px; background: #0284c7; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-weight: 700;">Submit Idea</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -845,7 +1000,7 @@
                 + '    <input type="text" name="stop_location[]" placeholder="e.g. Pilot #102">'
                 + '</div>'
                 + '<div class="form-group">'
-                + '    <input type="number" step="0.01" name="fuel_gallons[]" class="fuel-gal-input" placeholder="0.00" oninput="calculateLiveTotals()">'
+                + '    <input type="number" step="0.001" name="fuel_gallons[]" class="fuel-gal-input" placeholder="0.000" oninput="calculateLiveTotals()">'
                 + '</div>'
                 + '<div class="form-group">'
                 + '    <input type="number" step="0.001" name="fuel_price[]" class="fuel-ppg-input" placeholder="0.000" oninput="calculateLiveTotals()">'
@@ -922,6 +1077,7 @@
             });
 
             const catScale = parseFloat(document.getElementById('cat_scale').value) || 0;
+            const tolls = parseFloat(document.getElementById('tolls')?.value) || 0;
             const incidentals = parseFloat(document.getElementById('incidentals').value) || 0;
 
             // Gross Rate Per Mile: Pay / Total Miles
@@ -945,13 +1101,13 @@
             }
 
             // Surcharge Running Total
-            const runningTotal = surcharge - fuelTotal - defCost - reefer - catScale;
+            const runningTotal = surcharge - fuelTotal - defCost - reefer - catScale - tolls;
             document.getElementById('running_total').value = (runningTotal < 0 ? '-$' : '$') + Math.abs(runningTotal).toFixed(2);
 
-            // True Net PPM: Net Profit / Total Miles
+            // True Net PPM
             const totalDistance = totalMiles > 0 ? totalMiles : (loadedMiles + deadheadMiles);
             const totalRevenue = pay + surcharge;
-            const totalExpenses = fuelTotal + defCost + reefer + catScale + incidentals;
+            const totalExpenses = fuelTotal + defCost + reefer + catScale + tolls + incidentals;
             const netProfit = totalRevenue - totalExpenses;
 
             const netPpmField = document.getElementById('net_ppm');
@@ -965,7 +1121,7 @@
             }
         }
 
-        // Reusable SVG Semi-Trailer Icon Generator
+        // SVG Semi-Trailer Icon Generator
         function getTrailerSvg(fillColor, width = 24, height = 14) {
             return '<svg width="' + width + '" height="' + height + '" viewBox="0 0 24 14" fill="' + fillColor + '" style="display: inline-block; vertical-align: middle;">'
                 + '<path d="M1 2h14v8H1V2zm15 3h4l3 3v2h-7V5zm-12 8a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm8 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm7 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/>'
@@ -982,7 +1138,6 @@
             return '<span style="display: inline-flex; align-items: center; gap: 2px;" title="' + score + ' of 5 Trailers">' + icons + '</span>';
         }
 
-        let currentPickerRating = 5;
         const ratingLabels = {
             0: '0 Trailers (Blacklist)',
             1: '1 Trailer (Nightmare)',
@@ -992,12 +1147,18 @@
             5: '5 Trailers (Top Notch)'
         };
 
-        function updatePickerDisplay(score) {
-            currentPickerRating = score;
-            document.getElementById('review_rating_input').value = score;
-            document.getElementById('trailer-rating-label').textContent = ratingLabels[score] || (score + ' Trailers');
+        // Independent 5-Trailer Rating Pickers (Shipper & Receiver)
+        const currentRatings = {
+            pickup: 5,
+            delivery: 5
+        };
 
-            const container = document.getElementById('trailer-rating-picker');
+        function updateSpecificRating(target, score) {
+            currentRatings[target] = score;
+            document.getElementById(target + '_rating_input').value = score;
+            document.getElementById(target + '-rating-label').textContent = ratingLabels[score] || (score + ' Trailers');
+
+            const container = document.getElementById(target + '-rating-picker');
             container.innerHTML = '';
 
             for (let i = 1; i <= 5; i++) {
@@ -1006,20 +1167,27 @@
                 btn.style.cursor = 'pointer';
                 btn.style.display = 'inline-flex';
                 btn.title = i + ' Trailers';
-                btn.innerHTML = getTrailerSvg(color, 24, 14);
+                btn.innerHTML = getTrailerSvg(color, 22, 13);
 
                 btn.onclick = function() {
-                    if (currentPickerRating === 1 && i === 1) {
-                        updatePickerDisplay(0);
+                    if (currentRatings[target] === 1 && i === 1) {
+                        updateSpecificRating(target, 0);
                     } else {
-                        updatePickerDisplay(i);
+                        updateSpecificRating(target, i);
                     }
                 };
                 container.appendChild(btn);
             }
         }
 
-        // Date Span Picker & Performance Summary Filter Logic
+        function toggleReviewDrawer(drawerId, isChecked) {
+            const drawer = document.getElementById(drawerId);
+            if (drawer) {
+                drawer.style.display = isChecked ? 'flex' : 'none';
+            }
+        }
+
+        // Date Span Preset & Filter Logic
         function applyDatePreset(days, btnElement) {
             document.querySelectorAll('#btnPreset7, #btnPreset14, #btnPreset30, #btnPresetAll').forEach(b => b.classList.remove('active'));
             if (btnElement) btnElement.classList.add('active');
@@ -1079,14 +1247,22 @@
                     matchesDate = false;
                 }
 
-                // Check text query filter
+                // Check text query filter across shipper, receiver, cities, and notes
                 let matchesText = true;
                 if (textFilter.length > 0) {
-                    const customerEl = row.querySelector('.col-customer');
-                    const notesEl = row.querySelector('.col-notes');
-                    const customerText = customerEl ? customerEl.textContent.toLowerCase() : '';
-                    const notesText = notesEl ? notesEl.textContent.toLowerCase() : '';
-                    matchesText = customerText.includes(textFilter) || notesText.includes(textFilter);
+                    const shipper = (row.querySelector('.col-shipper')?.textContent || '').toLowerCase();
+                    const receiver = (row.querySelector('.col-receiver')?.textContent || '').toLowerCase();
+                    const pickNotes = (row.querySelector('.col-pickup-notes')?.textContent || '').toLowerCase();
+                    const delNotes = (row.querySelector('.col-delivery-notes')?.textContent || '').toLowerCase();
+                    const origCity = (row.querySelector('.col-orig-city')?.textContent || '').toLowerCase();
+                    const destCity = (row.querySelector('.col-dest-city')?.textContent || '').toLowerCase();
+
+                    matchesText = shipper.includes(textFilter)
+                               || receiver.includes(textFilter)
+                               || pickNotes.includes(textFilter)
+                               || delNotes.includes(textFilter)
+                               || origCity.includes(textFilter)
+                               || destCity.includes(textFilter);
                 }
 
                 if (matchesDate && matchesText) {
@@ -1100,10 +1276,11 @@
                     const defCost = parseFloat(row.dataset.def) || 0;
                     const reefer = parseFloat(row.dataset.reefer) || 0;
                     const cat = parseFloat(row.dataset.cat) || 0;
+                    const tolls = parseFloat(row.dataset.tolls) || 0;
                     const incidentals = parseFloat(row.dataset.incidental) || 0;
 
                     const totalRevenue = pay + surcharge;
-                    const totalExpenses = fuel + defCost + reefer + cat + incidentals;
+                    const totalExpenses = fuel + defCost + reefer + cat + tolls + incidentals;
 
                     grossSum += totalRevenue;
                     milesSum += miles;
@@ -1124,10 +1301,146 @@
             netEl.style.color = netSum >= 0 ? '#34d399' : '#f87171';
         }
 
+        // Feature Suggestion Modal Functions
+        function openSuggestionModal() {
+            document.getElementById('suggestionModal').style.display = 'flex';
+        }
+
+        function closeSuggestionModal() {
+            document.getElementById('suggestionModal').style.display = 'none';
+            document.getElementById('sugAlert').style.display = 'none';
+        }
+
+        function submitSuggestion(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmitSug');
+            const alertBox = document.getElementById('sugAlert');
+
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', document.querySelector('#suggestionForm [name=csrfmiddlewaretoken]').value);
+            formData.append('category', document.getElementById('sugCategory').value);
+            formData.append('title', document.getElementById('sugTitle').value);
+            formData.append('description', document.getElementById('sugDescription').value);
+
+            fetch('/submit-suggestion/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.textContent = 'Submit Idea';
+
+                alertBox.style.display = 'block';
+                if (data.status === 'success') {
+                    alertBox.style.background = 'rgba(16, 185, 129, 0.15)';
+                    alertBox.style.border = '1px solid #10b981';
+                    alertBox.style.color = '#34d399';
+                    alertBox.textContent = data.message;
+                    document.getElementById('suggestionForm').reset();
+                    setTimeout(closeSuggestionModal, 1800);
+                } else {
+                    alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                    alertBox.style.border = '1px solid #ef4444';
+                    alertBox.style.color = '#f87171';
+                    alertBox.textContent = data.message || 'Something went wrong.';
+                }
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.textContent = 'Submit Idea';
+                alertBox.style.display = 'block';
+                alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                alertBox.style.border = '1px solid #ef4444';
+                alertBox.style.color = '#f87171';
+                alertBox.textContent = 'Network error. Please try again.';
+            });
+        }
+
+        // Hook up Facility Live Lookups for Shipper and Receiver
+        function setupFacilityLookup(inputId, bannerId, personalBlockId, warningTextId, commBlockId, commListId) {
+            const input = document.getElementById(inputId);
+            const banner = document.getElementById(bannerId);
+            const personalBlock = document.getElementById(personalBlockId);
+            const warningText = document.getElementById(warningTextId);
+            const commBlock = document.getElementById(commBlockId);
+            const commList = document.getElementById(commListId);
+            let timer;
+
+            if (!input) return;
+
+            input.addEventListener('input', function() {
+                clearTimeout(timer);
+                const query = this.value.trim();
+
+                if (query.length < 2) {
+                    banner.style.display = 'none';
+                    return;
+                }
+
+                timer = setTimeout(function() {
+                    fetch('/customer-check/?name=' + encodeURIComponent(query))
+                        .then(res => res.json())
+                        .then(data => {
+                            const hasPersonal = data.warnings && data.warnings.length > 0;
+                            const hasComm = data.community_reviews && data.community_reviews.length > 0;
+
+                            if (!hasPersonal && !hasComm) {
+                                banner.style.display = 'none';
+                                return;
+                            }
+
+                            if (hasPersonal) {
+                                const noteObj = data.warnings[0];
+                                warningText.innerHTML = '<em>' + noteObj.date + ' (' + noteObj.trip_number + ')</em>:<br><strong>"' + noteObj.notes + '"</strong>';
+                                personalBlock.style.display = 'block';
+                            } else {
+                                personalBlock.style.display = 'none';
+                            }
+
+                            if (hasComm) {
+                                commList.innerHTML = data.community_reviews.map(function(r) {
+                                    const trailers = renderTrailerRating(r.rating);
+                                    let tags = '';
+                                    if (r.overnight_parking) tags += '<span style="color: #34d399; margin-right: 8px;">🅿️ Overnight OK</span>';
+                                    if (r.heavy_detention) tags += '<span style="color: #f87171; margin-right: 8px;">⏳ Long Wait</span>';
+
+                                    return '<div style="background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid #334155;">'
+                                        + '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">'
+                                        + '  <span style="color: #38bdf8; font-weight: 700; font-size: 12px;">' + r.driver_tag + '</span>'
+                                        + '  <div>' + trailers + '</div>'
+                                        + '</div>'
+                                        + '<div style="color: #cbd5e1; font-size: 13px;">"' + r.comment + '"</div>'
+                                        + '<div style="font-size: 11px; margin-top: 6px; display: flex; justify-content: space-between; color: #64748b;">'
+                                        + '  <div>' + tags + '</div>'
+                                        + '  <span>' + r.date + '</span>'
+                                        + '</div>'
+                                        + '</div>';
+                                }).join('');
+                                commBlock.style.display = 'block';
+                            } else {
+                                commBlock.style.display = 'none';
+                            }
+
+                            banner.style.display = 'block';
+                        })
+                        .catch(err => console.error('Lookup error:', err));
+                }, 350);
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
-            updatePickerDisplay(5);
+            updateSpecificRating('pickup', 5);
+            updateSpecificRating('delivery', 5);
             switchMode(currentMode);
             calculateLiveTotals();
+
+            // Setup facility intel lookups
+            setupFacilityLookup('pickup_facility', 'pickup-warning-banner', 'pickup-personal-block', 'pickup-warning-text', 'pickup-community-block', 'pickup-community-list');
+            setupFacilityLookup('destination_facility', 'dropoff-warning-banner', 'dropoff-personal-block', 'dropoff-warning-text', 'dropoff-community-block', 'dropoff-community-list');
 
             // Default summary filter window to Last 7 Days
             const defaultBtn = document.getElementById('btnPreset7');
@@ -1136,74 +1449,6 @@
             } else {
                 filterByDateRange();
             }
-        });
-
-        // Customer warning & review lookup debounce
-        const customerInput = document.getElementById('customer_name');
-        const warningBanner = document.getElementById('customer-warning-banner');
-        const personalBlock = document.getElementById('personal-warning-block');
-        const warningText = document.getElementById('customer-warning-text');
-        const commBlock = document.getElementById('community-reviews-block');
-        const commList = document.getElementById('community-reviews-list');
-        let debounceTimer;
-
-        customerInput.addEventListener('input', function() {
-            clearTimeout(debounceTimer);
-            const query = this.value.trim();
-
-            if (query.length < 2) {
-                warningBanner.style.display = 'none';
-                return;
-            }
-
-            debounceTimer = setTimeout(function() {
-                fetch('/customer-check/?name=' + encodeURIComponent(query))
-                    .then(function(res) { return res.json(); })
-                    .then(function(data) {
-                        const hasPersonal = data.warnings && data.warnings.length > 0;
-                        const hasCommunity = data.community_reviews && data.community_reviews.length > 0;
-
-                        if (!hasPersonal && !hasCommunity) {
-                            warningBanner.style.display = 'none';
-                            return;
-                        }
-
-                        if (hasPersonal) {
-                            const noteObj = data.warnings[0];
-                            warningText.innerHTML = '<em>' + noteObj.date + ' (' + noteObj.trip_number + ')</em>:<br><strong>"' + noteObj.notes + '"</strong>';
-                            personalBlock.style.display = 'block';
-                        } else {
-                            personalBlock.style.display = 'none';
-                        }
-
-                        if (hasCommunity) {
-                            commList.innerHTML = data.community_reviews.map(function(r) {
-                                const trailers = renderTrailerRating(r.rating);
-                                let tags = '';
-                                if (r.overnight_parking) tags += '<span style="color: #34d399; margin-right: 8px;">🅿️ Overnight OK</span>';
-                                if (r.heavy_detention) tags += '<span style="color: #f87171; margin-right: 8px;">⏳ Long Wait</span>';
-
-                                return '<div style="background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid #334155;">'
-                                    + '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">'
-                                    + '  <span style="color: #38bdf8; font-weight: 700; font-size: 12px;">' + r.driver_tag + '</span>'
-                                    + '  <div>' + trailers + '</div>'
-                                    + '</div>'
-                                    + '<div style="color: #cbd5e1; font-size: 13px;">"' + r.comment + '"</div>'
-                                    + '<div style="font-size: 11px; margin-top: 6px; display: flex; justify-content: space-between; color: #64748b;">'
-                                    + '  <div>' + tags + '</div>'
-                                    + '  <span>' + r.date + '</span>'
-                                    + '</div>'
-                                    + '</div>';
-                            }).join('');
-                            commBlock.style.display = 'block';
-                        } else {
-                            commBlock.style.display = 'none';
-                        }
-
-                        warningBanner.style.display = 'block';
-                    })
-                    .catch(function(err) { console.error('Error fetching customer warning:', err); });
-            }, 350);
         });
     </script>
 </body>

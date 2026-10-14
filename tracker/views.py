@@ -5,11 +5,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.db.models import Sum, Q
 from django.http import JsonResponse
 from django.utils import timezone
-from .models import DriverProfile, Trip, FuelStop, CustomerReview
+from .models import DriverProfile, Trip, FuelStop, CustomerReview, FeatureSuggestion
 
 
 def _parse_decimal(val, default='0.00'):
@@ -113,23 +114,37 @@ def customer_warning_check(request):
     if not query or len(query) < 2:
         return JsonResponse({'warnings': [], 'community_reviews': []})
 
-    # 1. Driver's own private load notes
+    # 1. Driver's own private load notes (checks pickup facility or dropoff facility)
     personal_notes = (
-        Trip.objects.filter(driver=request.user, customer_name__icontains=query)
-        .exclude(notes__exact='')
-        .order_by('-pickup_date')[:3]
+        Trip.objects.filter(
+            Q(driver=request.user) & (
+                Q(pickup_facility__icontains=query) | Q(destination_facility__icontains=query)
+            )
+        )
+        .order_by('-pickup_date')[:4]
     )
 
     red_flags = ['pain', 'trouble', 'avoid', 'slow', 'detention', 'bad', 'refused', 'waste', 'late', 'dock']
     warnings = []
 
     for trip in personal_notes:
-        note_lower = trip.notes.lower()
+        note_text = ""
+        if trip.pickup_facility and query.lower() in trip.pickup_facility.lower() and trip.pickup_notes:
+            note_text = f"[Shipper]: {trip.pickup_notes}"
+        elif trip.destination_facility and query.lower() in trip.destination_facility.lower() and trip.delivery_notes:
+            note_text = f"[Receiver]: {trip.delivery_notes}"
+        elif trip.notes:
+            note_text = trip.notes
+
+        if not note_text:
+            continue
+
+        note_lower = note_text.lower()
         is_red_flag = any(flag in note_lower for flag in red_flags)
         warnings.append({
             'date': trip.pickup_date.strftime('%b %d, %Y') if trip.pickup_date else 'Past Trip',
             'trip_number': trip.trip_number or trip.bol_number or 'N/A',
-            'notes': trip.notes,
+            'notes': note_text,
             'is_red_flag': is_red_flag,
         })
 
@@ -157,6 +172,27 @@ def customer_warning_check(request):
         'warnings': warnings,
         'community_reviews': community_feed
     })
+
+
+@login_required(login_url='login')
+@require_POST
+def submit_suggestion(request):
+    """Endpoint for drivers to submit feature suggestions/bugs directly to admin."""
+    category = request.POST.get('category', 'FEATURE')
+    title = request.POST.get('title', '').strip()
+    description = request.POST.get('description', '').strip()
+
+    if not title or not description:
+        return JsonResponse({'status': 'error', 'message': 'Summary and details are required.'}, status=400)
+
+    FeatureSuggestion.objects.create(
+        user=request.user,
+        category=category,
+        title=title,
+        description=description
+    )
+
+    return JsonResponse({'status': 'success', 'message': 'Thanks! Your idea has been sent directly to the development team.'})
 
 
 @login_required(login_url='login')
@@ -197,7 +233,7 @@ def trip_log_view(request, trip_id=None):
 
         cpm_rate = _parse_decimal(request.POST.get('cpm_rate'), default=None)
 
-        # Revenue & Mode Calculations
+        # Revenue & Expenses Parsing
         if driver_mode == 'COMPANY':
             posted_pay = _parse_decimal(request.POST.get('payout'), default=None)
             if posted_pay is not None and posted_pay > Decimal('0.00'):
@@ -209,14 +245,16 @@ def trip_log_view(request, trip_id=None):
 
             fuel_surcharge = Decimal('0.00')
             cat_scale = Decimal('0.00')
+            tolls = Decimal('0.00')
             incidentals = Decimal('0.00')
         else:
             payout = _parse_decimal(request.POST.get('payout'), default='0.00')
             fuel_surcharge = _parse_decimal(request.POST.get('fuel_surcharge'), default='0.00')
             cat_scale = _parse_decimal(request.POST.get('cat_scale'), default='0.00')
+            tolls = _parse_decimal(request.POST.get('tolls'), default='0.00')
             incidentals = _parse_decimal(request.POST.get('incidentals'), default='0.00')
 
-        # Always aggregate DEF & Reefer regardless of driver mode
+        # Multi-entry DEF & Reefer tallies
         def_entries = request.POST.getlist('def_cost_entry[]')
         if def_entries:
             def_cost = sum(_parse_decimal(c, default='0.00') for c in def_entries)
@@ -229,21 +267,21 @@ def trip_log_view(request, trip_id=None):
         else:
             reefer_cost = _parse_decimal(request.POST.get('reefer_cost'), default='0.00')
 
-        # Origin & Pickup
+        # Origin & Pickup (Shipper)
         origin_city = request.POST.get('origin_city', '').strip()
+        pickup_facility = request.POST.get('pickup_facility', '').strip()
         pickup_date = request.POST.get('pickup_date') or None
         pickup_arrival = request.POST.get('pickup_arrival') or None
         pickup_departure = request.POST.get('pickup_departure') or None
+        pickup_notes = request.POST.get('pickup_notes', '').strip()
 
-        # Destination & Delivery
+        # Destination & Delivery (Receiver)
         destination_city = request.POST.get('destination_city', '').strip()
+        destination_facility = request.POST.get('destination_facility', '').strip()
         destination_date = request.POST.get('destination_date') or request.POST.get('delivery_date') or None
         destination_arrival = request.POST.get('destination_arrival') or None
         destination_departure = request.POST.get('destination_departure') or None
-
-        # Customer & Private Notes
-        customer_name = request.POST.get('customer_name', '').strip()
-        notes = request.POST.get('notes', '').strip()
+        delivery_notes = request.POST.get('delivery_notes', '').strip()
 
         # Status transition by submit button clicked:
         action = request.POST.get('action', '')
@@ -252,7 +290,6 @@ def trip_log_view(request, trip_id=None):
         elif 'complete_trip' in request.POST or action == 'complete_trip':
             status = 'Delivered'
         else:
-            # "Save Daily Log"
             status = 'In Transit' if trip.status in ['Quote / Planner', None, ''] else trip.status
 
         # Update Trip instance
@@ -266,23 +303,26 @@ def trip_log_view(request, trip_id=None):
         trip.loaded_miles = loaded_miles
         trip.deadhead_miles = deadhead_miles
         trip.origin_city = origin_city
+        trip.pickup_facility = pickup_facility
         trip.pickup_date = pickup_date
         trip.pickup_arrival = pickup_arrival
         trip.pickup_departure = pickup_departure
+        trip.pickup_notes = pickup_notes
         trip.def_cost = def_cost
         trip.reefer_cost = reefer_cost
         trip.cat_scale = cat_scale
+        trip.tolls = tolls
         trip.incidentals = incidentals
         trip.destination_city = destination_city
+        trip.destination_facility = destination_facility
         trip.destination_date = destination_date
         trip.destination_arrival = destination_arrival
         trip.destination_departure = destination_departure
-        trip.customer_name = customer_name
-        trip.notes = notes
+        trip.delivery_notes = delivery_notes
         trip.status = status
         trip.save()
 
-        # Sync Fuel Stops for all driver modes (keeps diesel history for both Company and Owner-Op)
+        # Sync Fuel Stops (Diesel history)
         trip.fuel_stops.all().delete()
         locations = request.POST.getlist('stop_location[]') or request.POST.getlist('fuel_location[]')
         gallons_list = request.POST.getlist('fuel_gallons[]')
@@ -300,20 +340,39 @@ def trip_log_view(request, trip_id=None):
                 except (InvalidOperation, ValueError, TypeError):
                     pass
 
-        # Optional: Save/Update shared community review
-        if request.POST.get('share_review') and customer_name and notes:
-            rating = int(request.POST.get('review_rating', 5))
-            overnight_parking = request.POST.get('review_parking') == 'on' or request.POST.get('overnight_parking') == 'on'
-            heavy_detention = request.POST.get('review_detention') == 'on' or request.POST.get('heavy_detention') == 'on'
+        # 1. Independent Shipper Review Checkbox
+        if request.POST.get('share_pickup_review') and pickup_facility and pickup_notes:
+            pickup_rating = int(request.POST.get('pickup_rating', 5))
+            pickup_parking = bool(request.POST.get('pickup_parking'))
+            pickup_detention = bool(request.POST.get('pickup_detention'))
 
             CustomerReview.objects.update_or_create(
                 author=request.user,
-                customer_name=customer_name,
+                customer_name=pickup_facility,
                 defaults={
-                    'comment': notes,
-                    'rating': rating,
-                    'overnight_parking': overnight_parking,
-                    'heavy_detention': heavy_detention,
+                    'facility_type': 'PICKUP',
+                    'comment': pickup_notes,
+                    'rating': pickup_rating,
+                    'overnight_parking': pickup_parking,
+                    'heavy_detention': pickup_detention,
+                }
+            )
+
+        # 2. Independent Receiver Review Checkbox
+        if request.POST.get('share_delivery_review') and destination_facility and delivery_notes:
+            delivery_rating = int(request.POST.get('delivery_rating', 5))
+            delivery_parking = bool(request.POST.get('delivery_parking'))
+            delivery_detention = bool(request.POST.get('delivery_detention'))
+
+            CustomerReview.objects.update_or_create(
+                author=request.user,
+                customer_name=destination_facility,
+                defaults={
+                    'facility_type': 'DELIVERY',
+                    'comment': delivery_notes,
+                    'rating': delivery_rating,
+                    'overnight_parking': delivery_parking,
+                    'heavy_detention': delivery_detention,
                 }
             )
 
@@ -330,7 +389,7 @@ def trip_log_view(request, trip_id=None):
     all_trips = Trip.objects.filter(driver=request.user).prefetch_related('fuel_stops').order_by('-created_at')
     actual_trips = all_trips.exclude(status='Quote / Planner')
 
-    # 1. Miles this week (last 7 days by pickup_date)
+    # Miles this week (last 7 days by pickup_date)
     seven_days_ago = timezone.now().date() - timedelta(days=7)
     recent_trips = actual_trips.filter(pickup_date__gte=seven_days_ago)
 
@@ -341,7 +400,7 @@ def trip_log_view(request, trip_id=None):
         fallback_trips = actual_trips[:7]
         miles_this_week = sum(t.miles_total or Decimal('0.0') for t in fallback_trips)
 
-    # 2. Avg fuel efficiency (counts all delivered/in-transit trips with fuel recorded)
+    # Lifetime fuel MPG
     total_lifetime_miles = actual_trips.aggregate(Sum('miles_total'))['miles_total__sum'] or Decimal('0.0')
     total_stop_gallons = FuelStop.objects.filter(
         trip__driver=request.user,
@@ -354,7 +413,7 @@ def trip_log_view(request, trip_id=None):
         else 0.0
     )
 
-    # 3. Active settlements
+    # Active settlements
     active_settlements = actual_trips.aggregate(Sum('payout'))['payout__sum'] or Decimal('0.00')
 
     # Profile defaults

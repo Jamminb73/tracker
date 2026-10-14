@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import DriverProfile, Trip, FuelStop
+from .models import DriverProfile, Trip, FuelStop, FeatureSuggestion
+
 
 @admin.register(FeatureSuggestion)
 class FeatureSuggestionAdmin(admin.ModelAdmin):
@@ -31,5 +32,6 @@ class DriverProfileAdmin(admin.ModelAdmin):
 class TripAdmin(admin.ModelAdmin):
     list_display = ('trip_number', 'bol_number', 'driver', 'status', 'pickup_date', 'payout', 'running_total')
     list_filter = ('status', 'pickup_date')
-    search_fields = ('trip_number', 'bol_number', 'customer_name', 'driver__username')
+    search_fields = ('trip_number', 'bol_number', 'driver__username', 'pickup_facility', 'destination_facility')
     inlines = [FuelStopInline]
+    

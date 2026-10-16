@@ -360,8 +360,8 @@
             color: #fbbf24;
             border: 1px solid rgba(245, 158, 11, 0.4);
             border-radius: 4px;
-            padding: 3px 8px;
-            font-size: 11px;
+            padding: 4px 10px;
+            font-size: 12px;
             font-weight: 700;
             text-decoration: none;
             transition: all 0.2s ease;
@@ -369,11 +369,6 @@
         .btn-edit-action:hover {
             background: rgba(245, 158, 11, 0.3);
             color: #fef3c7;
-        }
-        .locked-badge {
-            font-size: 11px;
-            color: #64748b;
-            font-family: monospace;
         }
 
         .text-profit { color: #34d399; font-weight: 700; }
@@ -442,6 +437,7 @@
                 <div class="edit-banner">
                     <div>
                         <span>✏️ Currently Editing: <strong>{{ active_trip.status }}</strong> (Trip #{{ active_trip.trip_number|default:active_trip.id }})</span>
+                        <span style="font-size: 12px; color: #cbd5e1; margin-left: 10px;">— Open for adding late receipts, tolls, &amp; scale slips</span>
                     </div>
                     <a href="{% url 'trip_log' %}" class="btn-cancel-edit">Cancel &amp; Start Fresh</a>
                 </div>
@@ -461,7 +457,7 @@
                 <!-- Company Mode Pay Fields -->
                 <div class="form-group mode-company-only" style="display: none;">
                     <label for="cpm_rate">Cents Per Mile (CPM $)</label>
-                    <input type="number" step="0.001" id="cpm_rate" name="cpm_rate" value="{{ active_trip.cpm_rate|default:default_cpm }}" placeholder="0.58" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.001" id="cpm_rate" name="cpm_rate" value="{{ active_trip.cpm_rate|default:'' }}" placeholder="{{ default_cpm|default:'0.58' }}" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group mode-company-only" style="display: none;">
@@ -472,18 +468,18 @@
                 <!-- Owner-Op Mode Pay Fields -->
                 <div class="form-group mode-owner-only">
                     <label for="payout">Pay ($)</label>
-                    <input type="number" step="0.01" id="payout" name="payout" value="{{ active_trip.payout|default:'0.00' }}" placeholder="0.00" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.01" id="payout" name="payout" value="{{ active_trip.payout|default:'' }}" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group mode-owner-only">
                     <label for="fuel_surcharge">Fuel Surcharge ($)</label>
-                    <input type="number" step="0.01" id="fuel_surcharge" name="fuel_surcharge" value="{{ active_trip.fuel_surcharge|default:'0.00' }}" placeholder="0.00" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.01" id="fuel_surcharge" name="fuel_surcharge" value="{{ active_trip.fuel_surcharge|default:'' }}" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
                 <!-- Mileage Section -->
                 <div class="form-group">
                     <label for="miles_total"><strong>Total Miles (Hub-to-Hub)</strong></label>
-                    <input type="number" step="0.1" id="miles_total" name="miles_total" value="{{ active_trip.miles_total|default:'0.0' }}" placeholder="0.0" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.1" id="miles_total" name="miles_total" value="{{ active_trip.miles_total|default:'' }}" placeholder="0.0" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group mode-owner-only">
@@ -493,7 +489,7 @@
 
                 <div class="form-group mode-owner-only">
                     <label for="deadhead_miles">Deadhead Miles <span class="label-optional">(Optional)</span></label>
-                    <input type="number" step="0.1" id="deadhead_miles" name="deadhead_miles" value="{{ active_trip.deadhead_miles|default:'0.0' }}" placeholder="Optional" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.1" id="deadhead_miles" name="deadhead_miles" value="{{ active_trip.deadhead_miles|default:'' }}" placeholder="0.0" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group mode-owner-only">
@@ -665,17 +661,17 @@
 
                 <div class="form-group mode-owner-only">
                     <label for="cat_scale">CAT Scale ($)</label>
-                    <input type="number" step="0.01" id="cat_scale" name="cat_scale" value="{{ active_trip.cat_scale|default:'0.00' }}" placeholder="0.00" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.01" id="cat_scale" name="cat_scale" value="{{ active_trip.cat_scale|default:'' }}" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group mode-owner-only">
                     <label for="tolls">Tolls ($)</label>
-                    <input type="number" step="0.01" id="tolls" name="tolls" value="{{ active_trip.tolls|default:'0.00' }}" placeholder="0.00" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.01" id="tolls" name="tolls" value="{{ active_trip.tolls|default:'' }}" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group mode-owner-only">
                     <label for="incidentals">Incidentals (Wash, Rad, etc)</label>
-                    <input type="number" step="0.01" id="incidentals" name="incidentals" value="{{ active_trip.incidentals|default:'0.00' }}" placeholder="0.00" oninput="calculateLiveTotals()">
+                    <input type="number" step="0.01" id="incidentals" name="incidentals" value="{{ active_trip.incidentals|default:'' }}" placeholder="0.00" oninput="calculateLiveTotals()">
                 </div>
 
                 <div class="form-group mode-owner-only">
@@ -753,11 +749,11 @@
                     </div>
                 </div>
 
-                <!-- Action Buttons -->
+                <!-- Action Buttons: Explicit JS Handlers Prevent Accidental Delivery -->
                 <div class="btn-row">
-                    <button type="submit" name="save_log" class="btn-save" onclick="setTripStatus('In Transit')">Save Daily Log</button>
-                    <button type="submit" name="plan_mission" class="btn-plan" onclick="setTripStatus('Quote / Planner')">Save as Quote / Mission</button>
-                    <button type="submit" name="complete_trip" class="btn-complete" onclick="setTripStatus('Delivered')">Complete Trip</button>
+                    <button type="button" class="btn-save" onclick="handleTripSubmit('save_log')">Save Daily Log</button>
+                    <button type="button" class="btn-plan" onclick="handleTripSubmit('plan_mission')">Save as Quote / Mission</button>
+                    <button type="button" class="btn-complete" onclick="handleCompleteTrip()">Complete Trip</button>
                 </div>
             </form>
         </div>
@@ -767,7 +763,8 @@
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #334155; padding-bottom: 16px;">
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                     <span style="font-size: 13px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Date Window:</span>
-                    <button type="button" class="mode-btn active" id="btnPreset7" onclick="applyDatePreset(7, this)">Last 7 Days</button>
+                    <button type="button" class="mode-btn active" id="btnPresetPayWeek" onclick="applyPayPeriodPreset(this)">Current Pay Period (Wed 1600)</button>
+                    <button type="button" class="mode-btn" id="btnPreset7" onclick="applyDatePreset(7, this)">Last 7 Days</button>
                     <button type="button" class="mode-btn" id="btnPreset14" onclick="applyDatePreset(14, this)">Last 14 Days</button>
                     <button type="button" class="mode-btn" id="btnPreset30" onclick="applyDatePreset(30, this)">Last 30 Days</button>
                     <button type="button" class="mode-btn" id="btnPresetAll" onclick="applyDatePreset('all', this)">All Time</button>
@@ -811,7 +808,7 @@
             <div class="card-header">
                 <div>
                     <h2>Recent Run History &amp; Bids</h2>
-                    <p style="color: #94a3b8; font-size: 13px;">Filtered by Date Window, Shipper/Receiver Facilities, or Notes</p>
+                    <p style="color: #94a3b8; font-size: 13px;">Filtered by Pay Period, Date Window, Facilities, or Notes</p>
                 </div>
                 <input type="text" id="tableFilter" class="search-box" placeholder="Search facilities, cities, or notes..." onkeyup="filterByDateRange()">
             </div>
@@ -864,10 +861,8 @@
                             data-tolls="{{ trip.tolls|default:'0' }}"
                             data-incidental="{{ trip.incidentals|default:'0' }}">
                             <td>
+                                <!-- Open and accessible for all trips, delivered or otherwise -->
                                 <a href="{% url 'trip_log_edit' trip.id %}" class="btn-edit-action">✏️ Edit</a>
-                                {% if trip.status == 'Delivered' or trip.status == 'Settled' %}
-                                    <span class="locked-badge" style="display:block; font-size:10px; margin-top:2px;">(Delivered)</span>
-                                {% endif %}
                             </td>
                             <td>
                                 {% if trip.status == 'Quote / Planner' %}
@@ -959,11 +954,22 @@
     </div>
 
     <script>
-        let currentMode = '{{ active_trip.driver_mode|default:default_driver_mode|default:"OWNER_OPERATOR" }}';
+        // Store user-scoped preference key so multiple accounts on the same device don't conflict
+        const USER_PREF_KEY = 'riglog_driver_mode_{{ request.user.id|default:"anon" }}';
+        
+        let savedPreference = localStorage.getItem(USER_PREF_KEY);
+        let activeTripMode = '{{ active_trip.driver_mode|default:"" }}';
+        let profileDefault = '{{ default_driver_mode|default:"OWNER_OPERATOR" }}';
 
-        function switchMode(mode) {
+        let currentMode = activeTripMode || savedPreference || profileDefault;
+
+        function switchMode(mode, persist = true) {
             currentMode = mode;
             document.getElementById('driverModeInput').value = mode;
+
+            if (persist) {
+                localStorage.setItem(USER_PREF_KEY, mode);
+            }
 
             const btnCompany = document.getElementById('btnModeCompany');
             const btnOwner = document.getElementById('btnModeOwner');
@@ -987,8 +993,63 @@
             calculateLiveTotals();
         }
 
-        function setTripStatus(status) {
-            document.getElementById('tripStatus').value = status;
+        // Tap-to-select-all on all numeric inputs so drivers don't have to backspace/clear
+        function attachInputAutoSelect() {
+            document.querySelectorAll('input[type="number"]').forEach(input => {
+                if (!input.dataset.autoselectAttached) {
+                    input.addEventListener('focus', function() {
+                        this.select();
+                    });
+                    input.addEventListener('mouseup', function(e) {
+                        e.preventDefault();
+                    });
+                    input.dataset.autoselectAttached = 'true';
+                }
+            });
+        }
+
+        // Explicit submit router for forms
+        function handleTripSubmit(actionType) {
+            const form = document.getElementById('tripForm');
+            const statusInput = document.getElementById('tripStatus');
+
+            // Remove any old appended action inputs
+            const oldAction = document.getElementById('formActionParam');
+            if (oldAction) oldAction.remove();
+
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = actionType;
+            actionInput.id = 'formActionParam';
+            actionInput.value = '1';
+            form.appendChild(actionInput);
+
+            if (actionType === 'plan_mission') {
+                statusInput.value = 'Quote / Planner';
+            } else if (actionType === 'save_log') {
+                // If it's already Delivered, keep Delivered so late receipt edits preserve status
+                if (statusInput.value !== 'Delivered' && statusInput.value !== 'Quote / Planner') {
+                    statusInput.value = 'In Transit';
+                }
+            }
+            form.submit();
+        }
+
+        function handleCompleteTrip() {
+            const destCity = (document.getElementById('destination_city').value || '').trim();
+            const destFacility = (document.getElementById('destination_facility').value || '').trim();
+            const destDate = (document.getElementById('destination_date').value || '').trim();
+
+            if (!destCity || !destFacility || !destDate) {
+                alert('⚠️ To complete and mark a trip "Delivered", please enter the Destination City, Receiver Facility Name, and Delivery Date.');
+                if (!destCity) document.getElementById('destination_city').focus();
+                else if (!destFacility) document.getElementById('destination_facility').focus();
+                else if (!destDate) document.getElementById('destination_date').focus();
+                return;
+            }
+
+            document.getElementById('tripStatus').value = 'Delivered';
+            handleTripSubmit('complete_trip');
         }
 
         function addFuelStop() {
@@ -1007,6 +1068,7 @@
                 + '</div>'
                 + '<button type="button" class="btn-remove-fuel" onclick="removeExpenseRow(this, \'.fuel-line-row\')">&times;</button>';
             container.appendChild(row);
+            attachInputAutoSelect();
         }
 
         function addDefStop() {
@@ -1022,6 +1084,7 @@
                 + '</div>'
                 + '<button type="button" class="btn-remove-fuel" onclick="removeExpenseRow(this, \'.def-row\')">&times;</button>';
             container.appendChild(row);
+            attachInputAutoSelect();
         }
 
         function addReeferStop() {
@@ -1037,6 +1100,7 @@
                 + '</div>'
                 + '<button type="button" class="btn-remove-fuel" onclick="removeExpenseRow(this, \'.reefer-row\')">&times;</button>';
             container.appendChild(row);
+            attachInputAutoSelect();
         }
 
         function removeExpenseRow(button, rowSelector) {
@@ -1065,7 +1129,6 @@
             const loadedMiles = parseFloat(document.getElementById('loaded_miles').value) || 0;
             const deadheadMiles = parseFloat(document.getElementById('deadhead_miles').value) || 0;
             
-            // Multiple DEF & Reefer total sums
             let defCost = 0;
             document.querySelectorAll('.def-cost-input').forEach(input => {
                 defCost += parseFloat(input.value) || 0;
@@ -1147,7 +1210,6 @@
             5: '5 Trailers (Top Notch)'
         };
 
-        // Independent 5-Trailer Rating Pickers (Shipper & Receiver)
         const currentRatings = {
             pickup: 5,
             delivery: 5
@@ -1187,9 +1249,41 @@
             }
         }
 
-        // Date Span Preset & Filter Logic
+        // Pay Period Preset: Wednesday after 16:00 to Wednesday before 16:00
+        function applyPayPeriodPreset(btnElement) {
+            document.querySelectorAll('#btnPresetPayWeek, #btnPreset7, #btnPreset14, #btnPreset30, #btnPresetAll').forEach(b => b.classList.remove('active'));
+            if (btnElement) btnElement.classList.add('active');
+
+            const now = new Date();
+            const dayOfWeek = now.getDay(); // Sunday=0, Wednesday=3
+            const hours = now.getHours();
+
+            let daysSinceWed = (dayOfWeek - 3 + 7) % 7;
+            if (dayOfWeek === 3 && hours < 16) {
+                daysSinceWed = 7;
+            }
+
+            const cycleStart = new Date(now);
+            cycleStart.setDate(now.getDate() - daysSinceWed);
+
+            const cycleEnd = new Date(cycleStart);
+            cycleEnd.setDate(cycleStart.getDate() + 7);
+
+            const formatDate = (d) => {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            document.getElementById('dateRangeStart').value = formatDate(cycleStart);
+            document.getElementById('dateRangeEnd').value = formatDate(cycleEnd);
+            filterByDateRange();
+        }
+
+        // Standard Preset Filter Logic
         function applyDatePreset(days, btnElement) {
-            document.querySelectorAll('#btnPreset7, #btnPreset14, #btnPreset30, #btnPresetAll').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#btnPresetPayWeek, #btnPreset7, #btnPreset14, #btnPreset30, #btnPresetAll').forEach(b => b.classList.remove('active'));
             if (btnElement) btnElement.classList.add('active');
 
             const startInput = document.getElementById('dateRangeStart');
@@ -1247,7 +1341,6 @@
                     matchesDate = false;
                 }
 
-                // Check text query filter across shipper, receiver, cities, and notes
                 let matchesText = true;
                 if (textFilter.length > 0) {
                     const shipper = (row.querySelector('.col-shipper')?.textContent || '').toLowerCase();
@@ -1291,7 +1384,6 @@
                 }
             });
 
-            // Update Summary KPI Cards
             document.getElementById('statGrossPay').textContent = '$' + grossSum.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             document.getElementById('statTotalMiles').textContent = milesSum.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' mi';
             document.getElementById('statTotalExpenses').textContent = '$' + expenseSum.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -1360,7 +1452,7 @@
             });
         }
 
-        // Hook up Facility Live Lookups for Shipper and Receiver
+        // Facility Live Lookups
         function setupFacilityLookup(inputId, bannerId, personalBlockId, warningTextId, commBlockId, commListId) {
             const input = document.getElementById(inputId);
             const banner = document.getElementById(bannerId);
@@ -1433,19 +1525,20 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            switchMode(currentMode, false);
+            attachInputAutoSelect();
+
             updateSpecificRating('pickup', 5);
             updateSpecificRating('delivery', 5);
-            switchMode(currentMode);
             calculateLiveTotals();
 
-            // Setup facility intel lookups
             setupFacilityLookup('pickup_facility', 'pickup-warning-banner', 'pickup-personal-block', 'pickup-warning-text', 'pickup-community-block', 'pickup-community-list');
             setupFacilityLookup('destination_facility', 'dropoff-warning-banner', 'dropoff-personal-block', 'dropoff-warning-text', 'dropoff-community-block', 'dropoff-community-list');
 
-            // Default summary filter window to Last 7 Days
-            const defaultBtn = document.getElementById('btnPreset7');
-            if (defaultBtn) {
-                applyDatePreset(7, defaultBtn);
+            // Default to Wednesday 16:00 pay period preset on load
+            const payWeekBtn = document.getElementById('btnPresetPayWeek');
+            if (payWeekBtn) {
+                applyPayPeriodPreset(payWeekBtn);
             } else {
                 filterByDateRange();
             }

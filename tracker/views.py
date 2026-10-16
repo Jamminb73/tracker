@@ -133,7 +133,7 @@ def customer_warning_check(request):
             note_text = f"[Shipper]: {trip.pickup_notes}"
         elif trip.destination_facility and query.lower() in trip.destination_facility.lower() and trip.delivery_notes:
             note_text = f"[Receiver]: {trip.delivery_notes}"
-        elif trip.notes:
+        elif getattr(trip, 'notes', None):
             note_text = trip.notes
 
         if not note_text:
@@ -203,20 +203,32 @@ def trip_log_view(request, trip_id=None):
     active_trip = None
     if trip_id:
         active_trip = get_object_or_404(Trip, id=trip_id, driver=request.user)
+        # Never lock delivered trips; only lock if payroll has fully marked it "Settled"
+        if active_trip.status == 'Settled':
+            messages.warning(request, f"Trip #{active_trip.trip_number or active_trip.id} is settled for payroll and locked.")
+            return redirect('trip_log')
 
     if request.method == 'POST':
-        # Check if an existing trip ID came through hidden input or URL
         post_trip_id = request.POST.get('trip_id') or trip_id
         if post_trip_id:
             trip = get_object_or_404(Trip, id=post_trip_id, driver=request.user)
+            if trip.status == 'Settled':
+                messages.error(request, "This trip is settled and cannot be edited.")
+                return redirect('trip_log')
         else:
             trip = Trip(driver=request.user)
 
         driver_mode = request.POST.get('driver_mode', 'OWNER_OPERATOR')
+        
+        # Optionally persist mode to profile so it sticks across all sessions
+        if profile and hasattr(profile, 'default_driver_type') and profile.default_driver_type != driver_mode:
+            profile.default_driver_type = driver_mode
+            profile.save(update_fields=['default_driver_type'])
+
         trip_number = request.POST.get('trip_number', '').strip()
         bol_number = request.POST.get('bol_number', '').strip()
 
-        # Mileage Parsing & Intelligent Fallback
+        # Mileage Parsing
         raw_total_miles = _parse_decimal(request.POST.get('miles_total'), default=None)
         raw_loaded_miles = _parse_decimal(request.POST.get('loaded_miles'), default=None)
         deadhead_miles = _parse_decimal(request.POST.get('deadhead_miles'), default='0.0')
@@ -283,14 +295,35 @@ def trip_log_view(request, trip_id=None):
         destination_departure = request.POST.get('destination_departure') or None
         delivery_notes = request.POST.get('delivery_notes', '').strip()
 
-        # Status transition by submit button clicked:
-        action = request.POST.get('action', '')
-        if 'plan_mission' in request.POST or action in ['plan_mission', 'quote']:
+        # Determine Intent from Button Clicks & Enforce Receiver Rules
+        requested_status = request.POST.get('status', '').strip()
+        is_plan_action = 'plan_mission' in request.POST or requested_status == 'Quote / Planner'
+        is_complete_action = 'complete_trip' in request.POST or requested_status == 'Delivered'
+
+        has_receiver_info = bool(destination_city and destination_facility and destination_date)
+
+        if is_plan_action:
             status = 'Quote / Planner'
-        elif 'complete_trip' in request.POST or action == 'complete_trip':
-            status = 'Delivered'
+        elif is_complete_action:
+            if has_receiver_info:
+                status = 'Delivered'
+            else:
+                # Driver hit complete without receiver details: hold at 'In Transit' and alert
+                status = 'In Transit'
+                messages.warning(
+                    request,
+                    "Destination City, Receiver Facility, and Delivery Date are required before a trip can be marked 'Delivered'. Saved as 'In Transit'."
+                )
         else:
-            status = 'In Transit' if trip.status in ['Quote / Planner', None, ''] else trip.status
+            # Standard "Save Daily Log":
+            # If the trip was already Delivered (e.g. driver adding a receipt later), keep it Delivered.
+            # If it's a quote, leave as quote; otherwise In Transit.
+            if trip.status == 'Delivered':
+                status = 'Delivered'
+            elif trip.status == 'Quote / Planner':
+                status = 'Quote / Planner'
+            else:
+                status = 'In Transit'
 
         # Update Trip instance
         trip.driver_mode = driver_mode
@@ -376,8 +409,8 @@ def trip_log_view(request, trip_id=None):
                 }
             )
 
-        if status == 'Delivered':
-            messages.success(request, f"Trip #{trip.trip_number or trip.id} completed & delivered!")
+        if status == 'Delivered' and is_complete_action:
+            messages.success(request, f"Trip #{trip.trip_number or trip.id} delivered and completed!")
         elif post_trip_id:
             messages.success(request, f"Trip #{trip.trip_number or trip.id} updated successfully.")
         else:
